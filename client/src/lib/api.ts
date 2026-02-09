@@ -350,7 +350,7 @@ export interface DashboardSummary {
   redFlags: { type: string; message: string; severity: string }[];
 }
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 const API_TIMEOUT_MS = 20000; // 20 second timeout (outer layer, gives server's 15s timeout time to respond)
 
 export class ApiError extends Error {

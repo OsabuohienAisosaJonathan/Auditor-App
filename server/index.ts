@@ -30,6 +30,20 @@ app.use(
   }),
 );
 
+import cors from "cors";
+
+app.use(
+  cors({
+    origin: [
+      "https://miauditops.org",
+      "https://www.miauditops.org",
+      "http://localhost:5000",
+      "http://localhost:5173",
+    ],
+    credentials: true,
+  })
+);
+
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 export function log(message: string, source = "express") {

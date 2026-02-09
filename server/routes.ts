@@ -915,6 +915,7 @@ export async function registerRoutes(
         mustChangePassword: user.mustChangePassword,
         accessScope: user.accessScope,
       });
+    } catch (error: any) {
       const totalTime = Date.now() - loginStart;
       const errorMessage = error.message || (typeof error === 'string' ? error : 'Login failed with unspecified error');
 
@@ -949,8 +950,9 @@ export async function registerRoutes(
       }
 
       // Other errors (validation, etc.) return 400
-      res.status(401).json({ error: errorMessage }); // Changed 400->401 for generic login errors to be safe
-    });
+      res.status(401).json({ error: errorMessage }); // Changed 400->401 for generic generic login errors to be safe
+    }
+  });
 
   // Demo login for development preview - creates or reuses a demo account
   app.post("/api/auth/demo-login", async (req, res) => {
