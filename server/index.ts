@@ -37,6 +37,8 @@ app.use(
     origin: [
       "https://miauditops.org",
       "https://www.miauditops.org",
+      "https://miauditops.ng",
+      "https://www.miauditops.ng",
       "http://localhost:5000",
       "http://localhost:5173",
     ],
