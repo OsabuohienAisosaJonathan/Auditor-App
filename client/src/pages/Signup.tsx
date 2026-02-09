@@ -6,8 +6,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLocation, Link } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Building2, Users, ArrowLeft } from "lucide-react";
-import logoImage from "@/assets/logo2.png";
+import { Eye, EyeOff, Building2, Users, ArrowLeft, Mail, User, Lock } from "lucide-react";
+import PublicLayout from "@/components/layout/PublicLayout";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -17,7 +18,7 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountType, setAccountType] = useState<"company" | "auditor">("company");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     organizationName: "",
     fullName: "",
@@ -62,7 +63,7 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast({
         variant: "destructive",
@@ -98,7 +99,7 @@ export default function Signup() {
         title: "Account created!",
         description: "Please check your email to verify your account.",
       });
-      
+
       setLocation(`/check-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error: any) {
       toast({
@@ -112,213 +113,240 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="p-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => setLocation("/")}
-          className="gap-2 text-muted-foreground hover:text-foreground"
-          data-testid="button-back-home"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Home
-        </Button>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="p-8 rounded-xl border border-border shadow-lg bg-card">
-            <div className="text-center space-y-2 mb-8">
-              <Link href="/">
-                <img 
-                  src={logoImage} 
-                  alt="MiAuditOps" 
-                  className="h-24 mx-auto object-contain cursor-pointer" 
-                />
-              </Link>
-              <h1 className="text-2xl font-display font-bold text-foreground">Create your account</h1>
-              <p className="text-sm text-muted-foreground">Start your 14-day free trial</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Sign up as</Label>
-                <RadioGroup 
-                  value={accountType} 
-                  onValueChange={(val) => setAccountType(val as "company" | "auditor")}
-                  className="grid grid-cols-2 gap-4"
-                >
-                  <div>
-                    <RadioGroupItem value="company" id="company" className="peer sr-only" data-testid="radio-company" />
-                    <Label
-                      htmlFor="company"
-                      className={`flex flex-col items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-all duration-200 ${
-                        accountType === 'company' ? 'border-primary bg-primary/10' : 'border-border'
-                      }`}
-                    >
-                      <Building2 className="mb-2 h-6 w-6 text-foreground" />
-                      <span className="text-sm font-medium text-foreground">Company</span>
-                    </Label>
-                  </div>
-                  <div>
-                    <RadioGroupItem value="auditor" id="auditor" className="peer sr-only" data-testid="radio-auditor" />
-                    <Label
-                      htmlFor="auditor"
-                      className={`flex flex-col items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-all duration-200 ${
-                        accountType === 'auditor' ? 'border-primary bg-primary/10' : 'border-border'
-                      }`}
-                    >
-                      <Users className="mb-2 h-6 w-6 text-foreground" />
-                      <span className="text-sm font-medium text-foreground">Auditor</span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="organizationName">
-                  {accountType === "company" ? "Company Name" : "Audit Firm Name"}
-                </Label>
-                <Input
-                  id="organizationName"
-                  value={formData.organizationName}
-                  onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                  placeholder={accountType === "company" ? "Acme Restaurant Ltd" : "ABC Audit Partners"}
-                  className={`h-11 ${errors.organizationName ? 'border-destructive' : ''}`}
-                  data-testid="input-organization"
-                />
-                {errors.organizationName && (
-                  <p className="text-xs text-destructive">{errors.organizationName}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="John Doe"
-                  className={`h-11 ${errors.fullName ? 'border-destructive' : ''}`}
-                  data-testid="input-fullname"
-                />
-                {errors.fullName && (
-                  <p className="text-xs text-destructive">{errors.fullName}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="you@example.com"
-                  className={`h-11 ${errors.email ? 'border-destructive' : ''}`}
-                  data-testid="input-email"
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="••••••••"
-                    className={`h-11 pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                    data-testid="input-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    data-testid="button-toggle-password"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    placeholder="••••••••"
-                    className={`h-11 pr-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
-                    data-testid="input-confirm-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    data-testid="button-toggle-confirm-password"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.confirmPassword && (
-                  <p className="text-xs text-destructive">{errors.confirmPassword}</p>
-                )}
-              </div>
-
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                  className="mt-1"
-                  data-testid="checkbox-terms"
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm leading-relaxed cursor-pointer text-muted-foreground"
-                >
-                  I agree to the{" "}
-                  <a href="#" className="text-primary hover:underline" data-testid="link-terms">Terms of Service</a>
-                  {" "}and{" "}
-                  <a href="#" className="text-primary hover:underline" data-testid="link-privacy">Privacy Policy</a>
-                </label>
-              </div>
-              {errors.terms && (
-                <p className="text-xs text-destructive -mt-2">{errors.terms}</p>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-11 font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
-                disabled={isLoading}
-                data-testid="button-signup"
-              >
-                {isLoading ? "Creating account..." : "Create Account"}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link href="/login" className="font-medium text-primary hover:underline" data-testid="link-signin">
-                Sign In
-              </Link>
-            </div>
+    <PublicLayout forceDark={true}>
+      <div className="w-full min-h-[calc(100vh-80px)] grid lg:grid-cols-2">
+        {/* Left Side: Brand/Content */}
+        <div className="hidden lg:flex relative flex-col justify-between bg-slate-900 p-12 overflow-hidden">
+          {/* Background Effects */}
+          <div className="absolute inset-0">
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20" />
           </div>
 
-          <div className="mt-6 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Miemploya Audit Services. All rights reserved.
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-700 bg-slate-800/50 text-slate-300 text-xs font-medium mb-8">
+              <Users className="w-3 h-3 text-primary" />
+              <span>Join the network</span>
+            </div>
+            <h1 className="text-4xl font-display font-bold text-white mb-4 leading-tight">
+              Start Your Audit <br />
+              <span className="text-primary">Journey Today.</span>
+            </h1>
+            <p className="text-slate-400 text-lg max-w-md">
+              Create an account to access enterprise-grade hospitality auditing tools.
+            </p>
+          </div>
+
+          <div className="relative z-10 grid gap-4">
+            <div className="flex items-center gap-4 bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-white font-medium">For Companies</h3>
+                <p className="text-xs text-slate-400">Manage internal audits for your outlets.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="text-white font-medium">For Audit Firms</h3>
+                <p className="text-xs text-slate-400">Manage multiple clients and staff.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Signup Form */}
+        <div className="flex items-center justify-center p-6 md:p-12 bg-background">
+          <div className="w-full max-w-lg space-y-8">
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Create an account</h2>
+              <p className="text-muted-foreground mt-2">
+                Choose your account type and get started.
+              </p>
+            </div>
+
+            <Card className="border-0 shadow-none bg-transparent">
+              <CardContent className="p-0 space-y-8">
+                <div className="space-y-4">
+                  <Label className="text-base">I am signing up as a...</Label>
+                  <RadioGroup
+                    defaultValue="company"
+                    value={accountType}
+                    onValueChange={(val: "company" | "auditor") => setAccountType(val)}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <RadioGroupItem value="company" id="company" className="peer sr-only" />
+                      <Label
+                        htmlFor="company"
+                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <Building2 className="mb-3 h-6 w-6 text-muted-foreground peer-data-[state=checked]:text-primary" />
+                        <span className="font-semibold text-sm">Company</span>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem value="auditor" id="auditor" className="peer sr-only" />
+                      <Label
+                        htmlFor="auditor"
+                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <Users className="mb-3 h-6 w-6 text-muted-foreground peer-data-[state=checked]:text-primary" />
+                        <span className="font-semibold text-sm">Audit Firm</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid gap-2">
+                    <Label htmlFor="orgName">
+                      {accountType === "company" ? "Organization Name" : "Audit Firm Name"}
+                    </Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="orgName"
+                        placeholder={accountType === "company" ? "e.g., Grand Hotel Ltd." : "e.g., Smith & Co. Auditors"}
+                        className={`pl-10 h-11 ${errors.organizationName ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                        value={formData.organizationName}
+                        onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
+                      />
+                    </div>
+                    {errors.organizationName && <p className="text-sm text-destructive font-medium">{errors.organizationName}</p>}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        placeholder="John Doe"
+                        className={`pl-10 h-11 ${errors.fullName ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      />
+                    </div>
+                    {errors.fullName && <p className="text-sm text-destructive font-medium">{errors.fullName}</p>}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="name@example.com"
+                        className={`pl-10 h-11 ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      />
+                    </div>
+                    {errors.email && <p className="text-sm text-destructive font-medium">{errors.email}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid gap-2">
+                      <Label htmlFor="password">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Min. 8 chars"
+                          className={`pl-10 pr-10 h-11 ${errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
+                      {errors.password && <p className="text-sm text-destructive font-medium">{errors.password}</p>}
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Repeat password"
+                          className={`pl-10 pr-10 h-11 ${errors.confirmPassword ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          value={formData.confirmPassword}
+                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
+                      {errors.confirmPassword && <p className="text-sm text-destructive font-medium">{errors.confirmPassword}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-2 pt-2">
+                    <Checkbox
+                      id="terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      className={errors.terms ? "border-destructive" : ""}
+                    />
+                    <label
+                      htmlFor="terms"
+                      className={`text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${errors.terms ? "text-destructive" : "text-muted-foreground"}`}
+                    >
+                      I agree to the <Link href="/terms"><span className="text-primary hover:underline cursor-pointer">Terms of Service</span></Link> and <Link href="/privacy"><span className="text-primary hover:underline cursor-pointer">Privacy Policy</span></Link>.
+                    </label>
+                  </div>
+                  {errors.terms && <p className="text-xs text-destructive font-medium mt-1">{errors.terms}</p>}
+
+                  <Button type="submit" className="w-full h-11 font-semibold text-base mt-2" disabled={isLoading}>
+                    {isLoading ? "Creating Account..." : "Create Account"}
+                  </Button>
+                </form>
+              </CardContent>
+              <CardFooter className="flex justify-center p-0 pt-6">
+                <div className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <Link href="/login">
+                    <span className="text-primary hover:underline cursor-pointer font-medium">
+                      Sign In
+                    </span>
+                  </Link>
+                </div>
+              </CardFooter>
+            </Card>
           </div>
         </div>
       </div>
-    </div>
+    </PublicLayout>
   );
 }

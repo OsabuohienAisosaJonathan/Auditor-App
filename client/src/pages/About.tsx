@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation, Link } from "wouter";
-import { 
+import {
   ChevronRight,
   Warehouse,
   Calculator,
@@ -14,7 +14,7 @@ import {
   Wine,
   Hotel
 } from "lucide-react";
-import logoDarkImage from "@/assets/miauditops-logo-dark.jpeg";
+import logoDarkImage from "@/assets/miauditops-logo-dark.png";
 
 export default function About() {
   const [, setLocation] = useLocation();
@@ -27,25 +27,25 @@ export default function About() {
   ];
 
   const differentiators = [
-    { 
-      icon: Warehouse, 
-      title: "SRD-Led Inventory Flow", 
-      description: "Stock Reconciliation Departments (SRDs) structure your inventory into Main Store and Department Store ledgers, enabling precise tracking of goods from receiving to point-of-sale." 
+    {
+      icon: Warehouse,
+      title: "SRD-Led Inventory Flow",
+      description: "Stock Reconciliation Departments (SRDs) structure your inventory into Main Store and Department Store ledgers, enabling precise tracking of goods from receiving to point-of-sale."
     },
-    { 
-      icon: Calculator, 
-      title: "1st Hit vs 2nd Hit Reconciliation", 
-      description: "First Hit compares declared payments against captured sales. Second Hit incorporates auditor adjustments, receivables, and surplus to produce the final variance." 
+    {
+      icon: Calculator,
+      title: "1st Hit vs 2nd Hit Reconciliation",
+      description: "First Hit compares declared payments against captured sales. Second Hit incorporates auditor adjustments, receivables, and surplus to produce the final variance."
     },
-    { 
-      icon: AlertTriangle, 
-      title: "Exceptions + Registers", 
-      description: "Raise exceptions with investigation timelines, outcomes, and accountability. Track receivables (outstanding payments) and surplus (unexplained overages) in dedicated registers." 
+    {
+      icon: AlertTriangle,
+      title: "Exceptions + Registers",
+      description: "Raise exceptions with investigation timelines, outcomes, and accountability. Track receivables (outstanding payments) and surplus (unexplained overages) in dedicated registers."
     },
-    { 
-      icon: FileBarChart, 
-      title: "Evidence-Ready Reports", 
-      description: "Generate professional audit reports that executives trust—with variance analysis, exception summaries, and compliance scoring built in." 
+    {
+      icon: FileBarChart,
+      title: "Evidence-Ready Reports",
+      description: "Generate professional audit reports that executives trust—with variance analysis, exception summaries, and compliance scoring built in."
     },
   ];
 
@@ -81,8 +81,8 @@ export default function About() {
             <span className="text-primary">Hospitality Audits</span>
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            MiAuditOps is not a generic accounting tool. It's a specialized audit operations platform 
-            designed specifically for the unique challenges of hospitality businesses—where daily cash flows, 
+            MiAuditOps is not a generic accounting tool. It's a specialized audit operations platform
+            designed specifically for the unique challenges of hospitality businesses—where daily cash flows,
             high-volume inventory, and multiple revenue points demand rigorous, evidence-based audit procedures.
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function About() {
               Built for Your Industry
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Whether you're an external auditor or running your own hospitality business, 
+              Whether you're an external auditor or running your own hospitality business,
               MiAuditOps adapts to your workflow.
             </p>
           </div>
@@ -159,17 +159,17 @@ export default function About() {
             Join audit teams and hospitality businesses that trust MiAuditOps for daily operations.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              onClick={() => setLocation("/signup")} 
+            <Button
+              size="lg"
+              onClick={() => setLocation("/signup")}
               className="text-base px-8 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               data-testid="button-start-free"
             >
               Start Free <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
+            <Button
+              size="lg"
+              variant="outline"
               onClick={() => setLocation("/#pricing")}
               className="text-base px-8 transition-all duration-200 hover:-translate-y-0.5"
               data-testid="button-view-pricing"

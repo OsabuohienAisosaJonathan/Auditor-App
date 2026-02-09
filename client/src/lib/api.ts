@@ -358,7 +358,7 @@ export class ApiError extends Error {
   email?: string;
   isTimeout?: boolean;
   isAborted?: boolean;
-  
+
   constructor(public status: number, message: string, options?: { code?: string; email?: string; isTimeout?: boolean; isAborted?: boolean }) {
     super(message);
     this.name = "ApiError";
@@ -374,8 +374,8 @@ function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-function createTimeoutController(timeoutMs: number = API_TIMEOUT_MS): { 
-  controller: AbortController; 
+function createTimeoutController(timeoutMs: number = API_TIMEOUT_MS): {
+  controller: AbortController;
   clear: () => void;
   isTimedOut: () => boolean;
 } {
@@ -413,7 +413,7 @@ export async function attemptSilentRefresh(): Promise<boolean> {
   if (refreshPromise) {
     return refreshPromise;
   }
-  
+
   // Prevent refresh spam
   const now = Date.now();
   if (now - lastRefreshAttempt < REFRESH_COOLDOWN_MS) {
@@ -421,16 +421,16 @@ export async function attemptSilentRefresh(): Promise<boolean> {
     return false;
   }
   lastRefreshAttempt = now;
-  
+
   const startTime = Date.now();
   logAuthEvent("REFRESH_START", { endpoint: "/auth/refresh", method: "POST" });
-  
+
   // Create a new refresh promise (dedupe concurrent calls)
   refreshPromise = (async () => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for refresh
-      
+
       const response = await fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
         credentials: "include",
@@ -439,10 +439,10 @@ export async function attemptSilentRefresh(): Promise<boolean> {
           "Content-Type": "application/json",
         },
       });
-      
+
       clearTimeout(timeoutId);
       const duration = Date.now() - startTime;
-      
+
       if (response.ok) {
         const data = await response.json();
         logAuthEvent("REFRESH_OK", { endpoint: "/auth/refresh", duration, status: response.status });
@@ -450,9 +450,9 @@ export async function attemptSilentRefresh(): Promise<boolean> {
         return true;
       } else {
         const error = await response.json().catch(() => ({}));
-        logAuthEvent("REFRESH_FAIL", { 
-          endpoint: "/auth/refresh", 
-          duration, 
+        logAuthEvent("REFRESH_FAIL", {
+          endpoint: "/auth/refresh",
+          duration,
           status: response.status,
           message: error.code || error.error || "Unknown error"
         });
@@ -472,7 +472,7 @@ export async function attemptSilentRefresh(): Promise<boolean> {
       refreshPromise = null;
     }
   })();
-  
+
   return refreshPromise;
 }
 
@@ -487,32 +487,32 @@ export function handle401Redirect() {
   // Use a debounce approach instead of permanent flag
   // Allow re-triggering after a short delay to handle legitimate session expiry
   if (isRedirecting) return;
-  
+
   const currentPath = window.location.pathname;
   if (!PUBLIC_PATHS.includes(currentPath)) {
     isRedirecting = true;
     logAuthEvent("SESSION_EXPIRED", { message: `Session expired on ${currentPath}` });
-    
+
     // Clear query cache
     if (queryClientRef) {
       queryClientRef.clear();
     }
-    
+
     // Notify auth context to update state - no hard redirect
     // The auth context will set user=null, and App.tsx route guards will show login
     if (onSessionExpiredCallback) {
       onSessionExpiredCallback();
     }
-    
+
     // Show toast only once
     toast.error("Session expired, please log in again");
-    
+
     // Reset flag after brief delay to allow future 401 handling
     // This is needed since we're not doing a hard redirect anymore
     setTimeout(() => {
       isRedirecting = false;
     }, 2000);
-    
+
     // DO NOT redirect here - let the auth context and route guards handle it
     // This prevents redirect loops when cookies aren't working
   }
@@ -529,7 +529,7 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
   const requestId = generateRequestId();
   const { controller, clear, isTimedOut } = createTimeoutController();
   const startTime = Date.now();
-  
+
   try {
     const response = await fetch(`${API_BASE}${url}`, {
       ...options,
@@ -541,9 +541,9 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
         ...options?.headers,
       },
     });
-    
+
     clear();
-    
+
     const duration = Date.now() - startTime;
     if (duration > 3000) {
       console.warn(`[API] Slow request: ${url} took ${duration}ms (reqId: ${requestId})`);
@@ -572,8 +572,8 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
           throw new ApiError(401, "Session expired", { code: "SESSION_EXPIRED" });
         case 402:
           if (error.code === "SUBSCRIPTION_EXPIRED") {
-            window.dispatchEvent(new CustomEvent("subscription-expired", { 
-              detail: { expiryDate: error.expiryDate, status: error.status } 
+            window.dispatchEvent(new CustomEvent("subscription-expired", {
+              detail: { expiryDate: error.expiryDate, status: error.status }
             }));
           }
           break;
@@ -602,9 +602,9 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
           }
       }
 
-      throw new ApiError(response.status, errorMessage, { 
-        code: error.code, 
-        email: error.email 
+      throw new ApiError(response.status, errorMessage, {
+        code: error.code,
+        email: error.email
       });
     }
 
@@ -615,11 +615,11 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
     return {} as T;
   } catch (error) {
     clear();
-    
+
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     // Handle abort errors - distinguish between timeout and manual cancel
     if (error instanceof DOMException && error.name === "AbortError") {
       const duration = Date.now() - startTime;
@@ -636,14 +636,14 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
         throw new ApiError(0, "Request cancelled", { isAborted: true });
       }
     }
-    
+
     if (error instanceof TypeError && error.message.includes("fetch")) {
       const duration = Date.now() - startTime;
       logAuthEvent("API_NETWORK_ERROR", { endpoint: url, method: options?.method || "GET", status: "NETWORK", duration });
       toast.error("Network error, please check your connection");
       throw new ApiError(0, "Network error, please check your connection");
     }
-    
+
     console.error(`[API] Unexpected error for ${url} (reqId: ${requestId}):`, error);
     throw error;
   }
@@ -776,7 +776,7 @@ export interface NotificationsResponse {
 }
 
 export const notificationsApi = {
-  getAll: (limit?: number) => 
+  getAll: (limit?: number) =>
     fetchApi<NotificationsResponse>(`/notifications${limit ? `?limit=${limit}` : ""}`),
   markRead: (id: string) =>
     fetchApi<{ success: boolean }>(`/notifications/${id}/read`, { method: "PATCH" }),
@@ -899,7 +899,7 @@ export const departmentsApi = {
   getByCategory: (categoryId: string) => fetchApi<Department[]>(`/categories/${categoryId}/departments`),
   get: (id: string) => fetchApi<Department>(`/departments/${id}`),
   checkUsage: (id: string) => fetchApi<{ isUsed: boolean }>(`/departments/${id}/usage`),
-  
+
   create: (clientId: string, data: { name: string; categoryId?: string }) =>
     fetchApi<Department>(`/clients/${clientId}/departments`, {
       method: "POST",
@@ -948,7 +948,7 @@ export const paymentDeclarationsApi = {
     const queryString = params.toString();
     return fetchApi<PaymentDeclaration[]>(`/payment-declarations/${departmentId}${queryString ? `?${queryString}` : ""}`);
   },
-  get: (clientId: string, departmentId: string, date: string) => 
+  get: (clientId: string, departmentId: string, date: string) =>
     fetchApi<PaymentDeclaration>(`/payment-declarations/${clientId}/${departmentId}/${date}`),
   create: (data: {
     clientId: string;
@@ -982,7 +982,7 @@ export const paymentDeclarationsApi = {
 };
 
 export const reconciliationHintApi = {
-  get: (departmentId: string, date: string) => 
+  get: (departmentId: string, date: string) =>
     fetchApi<ReconciliationHint>(`/reconciliation-hint/${departmentId}/${date}`),
 };
 
@@ -1167,11 +1167,11 @@ export const storeIssuesApi = {
   },
   get: (id: string) => fetchApi<StoreIssue>(`/store-issues/${id}`),
   getLines: (id: string) => fetchApi<StoreIssueLine[]>(`/store-issues/${id}/lines`),
-  create: (data: { 
-    clientId: string; 
-    issueDate: string; 
-    fromDepartmentId: string; 
-    toDepartmentId: string; 
+  create: (data: {
+    clientId: string;
+    issueDate: string;
+    fromDepartmentId: string;
+    toDepartmentId: string;
     notes?: string;
     status?: string;
     lines?: { itemId: string; qtyIssued: string; costPriceSnapshot?: string }[];
@@ -1343,6 +1343,7 @@ export const auditLogsApi = {
     endDate?: string;
     limit?: number;
     offset?: number;
+    skipTotal?: boolean;
   }) => {
     const params = new URLSearchParams();
     if (filters?.userId) params.append("userId", filters.userId);
@@ -1351,6 +1352,7 @@ export const auditLogsApi = {
     if (filters?.endDate) params.append("endDate", filters.endDate);
     if (filters?.limit) params.append("limit", filters.limit.toString());
     if (filters?.offset) params.append("offset", filters.offset.toString());
+    if (filters?.skipTotal) params.append("skipTotal", "true");
     return fetchApi<{ logs: AuditLog[]; total: number }>(`/audit-logs?${params}`);
   },
 };
@@ -1438,7 +1440,7 @@ export interface UserClientAccess {
   assignedBy: string;
   notes: string | null;
   suspendReason: string | null;
-  createdAt: Date;
+  assignedAt: Date;
   updatedAt: Date;
 }
 
@@ -1636,7 +1638,7 @@ export const inventoryDepartmentsApi = {
     fetchApi<{ success: boolean }>(`/inventory-departments/${id}`, {
       method: "DELETE",
     }),
-  getCategories: (id: string) => 
+  getCategories: (id: string) =>
     fetchApi<InventoryDepartmentCategory[]>(`/inventory-departments/${id}/categories`),
   setCategories: (id: string, categoryIds: string[]) =>
     fetchApi<InventoryDepartmentCategory[]>(`/inventory-departments/${id}/categories`, {
@@ -1671,7 +1673,7 @@ export const grnApi = {
     return fetchApi<GoodsReceivedNote[]>(`/grn?${params}`);
   },
   get: (id: string) => fetchApi<GoodsReceivedNote>(`/grn/${id}`),
-  getDailyTotal: (clientId: string, date: string) => 
+  getDailyTotal: (clientId: string, date: string) =>
     fetchApi<{ total: number }>(`/grn/daily-total?clientId=${clientId}&date=${date}`),
   create: async (data: FormData) => {
     const res = await fetch("/api/grn", {

@@ -1,0 +1,175 @@
+Found table: admin_activity_logs
+Created admin_activity_logs
+Found table: audit_change_log
+Created audit_change_log
+Found table: audit_contexts
+Failed to create audit_contexts: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  start_date DATETIME NOT NULL,
+  end_date DATETIME NOT ...' at line 6
+Found table: audit_logs
+Created audit_logs
+Found table: audit_reissue_permissions
+Failed to create audit_reissue_permissions: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  reason LONGTEXT,
+  active TINYINT(1) DEFAULT true
+) EN...' at line 8
+Found table: audits
+Failed to create audits: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  start_date DATETIME NOT NULL,
+  end_date DATETIME NOT ...' at line 5
+Found table: categories
+Failed to create categories: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  created_by VARCHAR(255),
+  created_at DATETIME DEFAULT...' at line 5
+Found table: clients
+Failed to create clients: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  risk_score INT DEFAULT 0,
+  variance_threshold DECIMAL...' at line 4
+Found table: data_exports
+Failed to create data_exports: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  filename LONGTEXT,
+  file_path LONGTEXT,
+  file_size I...' at line 6
+Found table: departments
+Failed to create departments: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  client_id VARCHAR(36) NOT NULL,
+  category_id VARCHAR(...' at line 5
+Found table: exception_activity
+Failed to create exception_activity: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  message LONGTEXT NOT NULL,
+  previous_value LONGTEXT,
+...' at line 4
+Found table: exception_comments
+Created exception_comments
+Found table: exceptions
+Failed to create exceptions: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT,
+  status LONGTEXT DEFAULT 'open'::LONGTEXT,
+  evidence_urls LONGT...' at line 9
+Found table: goods_received_notes
+Failed to create goods_received_notes: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  evidence_url LONGTEXT,
+  evidence_file_name LONGTEXT,
+...' at line 9
+Found table: inventory_department_categories
+Created inventory_department_categories
+Found table: inventory_departments
+Failed to create inventory_departments: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL...' at line 6
+Found table: item_serial_events
+Created item_serial_events
+Found table: items
+Failed to create items: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  unit LONGTEXT DEFAULT 'pcs'::LONGTEXT NOT NULL,
+  cost...' at line 6
+Found table: notifications
+Created notifications
+Found table: organization_settings
+Failed to create organization_settings: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  updated_by VARCHAR(255),
+  updated_at DATETIME DEFAULT...' at line 7
+Found table: organizations
+Failed to create organizations: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  email LONGTEXT,
+  phone LONGTEXT,
+  address LONGTEXT,
+...' at line 4
+Found table: payment_declarations
+Created payment_declarations
+Found table: payments
+Failed to create payments: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  period_covered_start DATETIME NOT NULL,
+  period_cover...' at line 5
+Found table: platform_admin_audit_log
+Created platform_admin_audit_log
+Found table: platform_admin_users
+Failed to create platform_admin_users: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  is_active TINYINT(1) DEFAULT true NOT NULL,
+  last_log...' at line 6
+Found table: purchase_item_events
+Created purchase_item_events
+Found table: purchase_lines
+Created purchase_lines
+Found table: purchases
+Failed to create purchases: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT,
+  evidence_url LONGTEXT,
+  created_by VARCHAR(255) NOT NULL,
+  cr...' at line 7
+Found table: receivable_history
+Created receivable_history
+Found table: receivables
+Failed to create receivables: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  comments LONGTEXT,
+  evidence_url LONGTEXT,
+  created_...' at line 9
+Found table: reconciliations
+Failed to create reconciliations: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT,
+  created_by VARCHAR(255) NOT NULL,
+  created_at DATETIME DEFAULT...' at line 11
+Found table: sales_entries
+Failed to create sales_entries: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT,
+  cash_amount DECIMAL(12,2) DEFAULT 0.00,
+  pos_amount DECIMAL(12...' at line 5
+Found table: session
+Failed to create session: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'time zone NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_un...' at line 4
+Found table: srd_ledger_daily
+Failed to create srd_ledger_daily: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::numeric NOT NULL,
+  closing_qty DECIMAL(18,2) DEFAULT '0'::numeric NOT NULL...' at line 8
+Found table: srd_stock_movements
+Created srd_stock_movements
+Found table: srd_transfers
+Failed to create srd_transfers: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  notes LONGTEXT,
+  status LONGTEXT DEFAULT 'posted'::LO...' at line 10
+Found table: stock_counts
+Created stock_counts
+Found table: stock_movement_lines
+Created stock_movement_lines
+Found table: stock_movements
+Created stock_movements
+Found table: store_issue_lines
+Created store_issue_lines
+Found table: store_issues
+Failed to create store_issues: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  created_by VARCHAR(255) NOT NULL,
+  created_at DATETIM...' at line 8
+Found table: store_names
+Failed to create store_names: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL...' at line 4
+Found table: store_stock
+Created store_stock
+Found table: subscription_plans
+Failed to create subscription_plans: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  max_clients INT DEFAULT 1 NOT NULL,
+  max_srd_departme...' at line 11
+Found table: subscriptions
+Failed to create subscriptions: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  billing_period LONGTEXT DEFAULT 'monthly'::LONGTEXT NO...' at line 3
+Found table: suppliers
+Failed to create suppliers: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL...' at line 9
+Found table: surplus_history
+Created surplus_history
+Found table: surpluses
+Failed to create surpluses: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  classification LONGTEXT,
+  comments LONGTEXT,
+  eviden...' at line 7
+Found table: system_settings
+Failed to create system_settings: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'LONGTEXT NOT NULL,
+  value JSON NOT NULL,
+  updated_by VARCHAR(255),
+  update...' at line 3
+Found table: user_client_access
+Failed to create user_client_access: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  assigned_by VARCHAR(255) NOT NULL,
+  assigned_at DATET...' at line 5
+Found table: user_settings
+Failed to create user_settings: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  auto_save_enabled TINYINT(1) DEFAULT true NOT NULL,
+  ...' at line 4
+Found table: users
+Failed to create users: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '::LONGTEXT NOT NULL,
+  phone LONGTEXT,
+  created_at DATETIME DEFAULT CURRENT_...' at line 7
+Schema conversion complete.

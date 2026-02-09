@@ -122,8 +122,8 @@ export default function ClientAccess() {
   const suspendedUsers = accessList?.filter(a => a.status === "suspended") || [];
   const removedUsers = accessList?.filter(a => a.status === "removed") || [];
 
-  const availableUsers = users?.filter(u => 
-    u.role !== "super_admin" && 
+  const availableUsers = users?.filter(u =>
+    u.role !== "super_admin" &&
     !accessList?.some(a => a.userId === u.id && a.status !== "removed")
   ) || [];
 
@@ -262,7 +262,7 @@ export default function ClientAccess() {
                         <TableRow key={access.id} data-testid={`row-access-${access.id}`}>
                           <TableCell className="font-medium">{getUserName(access.userId)}</TableCell>
                           <TableCell>{getStatusBadge(access.status)}</TableCell>
-                          <TableCell>{format(new Date(access.createdAt), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{format(new Date(access.assignedAt), "MMM d, yyyy")}</TableCell>
                           <TableCell className="max-w-[200px] truncate">{access.notes || "-"}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">

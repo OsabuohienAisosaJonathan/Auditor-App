@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -59,37 +60,37 @@ app.use((req, res, next) => {
   if (!req.path.startsWith("/api")) {
     return next();
   }
-  
+
   // Skip timeout for exempt routes (streaming, uploads, downloads)
   const isExempt = TIMEOUT_EXEMPT_PATTERNS.some(pattern => req.path.startsWith(pattern));
   if (isExempt) {
     return next();
   }
-  
+
   // Track if request has timed out
   (req as any).__timedOut = false;
-  
+
   // Wrap res.json and res.send to prevent writes after timeout
   const originalJson = res.json.bind(res);
   const originalSend = res.send.bind(res);
   const originalEnd = res.end.bind(res);
-  
-  res.json = function(body: any) {
+
+  res.json = function (body: any) {
     if ((req as any).__timedOut || res.destroyed || res.headersSent) {
       console.debug(`[SKIP WRITE] ${req.method} ${req.path} - response already handled`);
       return res;
     }
     return originalJson(body);
   };
-  
-  res.send = function(body: any) {
+
+  res.send = function (body: any) {
     if ((req as any).__timedOut || res.destroyed || res.headersSent) {
       console.debug(`[SKIP WRITE] ${req.method} ${req.path} - response already handled`);
       return res;
     }
     return originalSend(body);
   };
-  
+
   // Use res.setTimeout for cooperative timeout
   res.setTimeout(SERVER_REQUEST_TIMEOUT_MS, () => {
     (req as any).__timedOut = true;
@@ -103,7 +104,7 @@ app.use((req, res, next) => {
       }
     }
   });
-  
+
   next();
 });
 
@@ -123,7 +124,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       const status = res.statusCode;
       let logLine = `${req.method} ${path} ${status} in ${duration}ms`;
-      
+
       // Truncate response body for logging (max 200 chars)
       if (capturedJsonResponse) {
         const bodyStr = JSON.stringify(capturedJsonResponse);
@@ -135,7 +136,7 @@ app.use((req, res, next) => {
       if (duration > SLOW_ROUTE_THRESHOLD_MS) {
         console.warn(`[SLOW ROUTE] ${req.method} ${path} took ${duration}ms (threshold: ${SLOW_ROUTE_THRESHOLD_MS}ms) status=${status}`);
       }
-      
+
       // Log 500 errors with details
       if (status >= 500) {
         console.error(`[SERVER ERROR] ${req.method} ${path} ${status} in ${duration}ms`);
@@ -159,15 +160,16 @@ app.get("/healthz", (_req, res) => {
 });
 
 // Root health check for Replit deployment (returns minimal response quickly)
-app.get("/", (req, res, next) => {
-  // If this is a health check probe (no Accept header or accepts JSON), respond quickly
-  const acceptHeader = req.headers.accept || "";
-  if (!acceptHeader || acceptHeader.includes("application/json") || req.headers["user-agent"]?.includes("health")) {
-    return res.status(200).send("OK");
-  }
-  // Otherwise, let static file serving handle it (for browser requests)
-  next();
-});
+// Root health check removed to prevent conflict with SPA serving
+// app.get("/", (req, res, next) => {
+//   // If this is a health check probe (no Accept header or accepts JSON), respond quickly
+//   const acceptHeader = req.headers.accept || "";
+//   if (!acceptHeader || acceptHeader.includes("application/json") || req.headers["user-agent"]?.includes("health")) {
+//     return res.status(200).send("OK");
+//   }
+//   // Otherwise, let static file serving handle it (for browser requests)
+//   next();
+// });
 
 // Track initialization state for /api/health endpoint
 let dbInitialized = false;
@@ -175,11 +177,11 @@ let dbInitError: string | null = null;
 
 // Basic /api/health that works before full init
 app.get("/api/health", (_req, res) => {
-  res.status(200).json({ 
-    status: "ok", 
+  res.status(200).json({
+    status: "ok",
     dbInitialized,
     dbInitError,
-    timestamp: Date.now() 
+    timestamp: Date.now()
   });
 });
 
@@ -190,7 +192,7 @@ httpServer.listen(
   {
     port,
     host: "0.0.0.0",
-    reusePort: true,
+    host: "0.0.0.0",
   },
   () => {
     log(`serving on port ${port} (health checks ready)`);
@@ -224,7 +226,7 @@ httpServer.listen(
       res.status(503).json({ ok: false, error: err.message, poolStats: getPoolStats() });
     }
   });
-  
+
   // Add /api/health/pool endpoint for pool diagnostics
   app.get("/api/health/pool", (_req, res) => {
     const stats = getPoolStats();
@@ -235,14 +237,14 @@ httpServer.listen(
       timestamp: new Date().toISOString(),
     });
   });
-  
+
   // Circuit breaker middleware - return 503 early if DB is overloaded
   app.use("/api", (req, res, next) => {
     // Skip health endpoints
     if (req.path.startsWith("/api/health")) {
       return next();
     }
-    
+
     if (isCircuitBreakerOpen()) {
       console.warn(`[Circuit Breaker] Rejecting ${req.method} ${req.path} - DB overloaded`);
       return res.status(503).json({
@@ -251,7 +253,7 @@ httpServer.listen(
         retryAfter: 30,
       });
     }
-    
+
     next();
   });
 

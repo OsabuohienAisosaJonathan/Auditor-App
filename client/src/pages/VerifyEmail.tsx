@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "wouter";
 import { useEffect, useState } from "react";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
-import logoDarkImage from "@/assets/miauditops-logo-dark.jpeg";
+import logoDarkImage from "@/assets/miauditops-logo-dark.png";
 
 export default function VerifyEmail() {
   const [, setLocation] = useLocation();
@@ -43,8 +43,8 @@ export default function VerifyEmail() {
   return (
     <div className="public-dark min-h-screen flex flex-col bg-background">
       <div className="p-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => setLocation("/")}
           className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/10"
           data-testid="button-back-home"
@@ -57,10 +57,10 @@ export default function VerifyEmail() {
         <div className="w-full max-w-md">
           <div className="p-8 rounded-xl border border-border shadow-lg bg-card text-center">
             <Link href="/">
-              <img 
-                src={logoDarkImage} 
-                alt="MiAuditOps" 
-                className="h-14 mx-auto object-contain cursor-pointer mb-6" 
+              <img
+                src={logoDarkImage}
+                alt="MiAuditOps"
+                className="h-14 mx-auto object-contain cursor-pointer mb-6"
               />
             </Link>
 

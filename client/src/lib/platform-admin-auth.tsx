@@ -46,8 +46,22 @@ export function PlatformAdminAuthProvider({ children }: { children: ReactNode })
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Login failed");
+      let errorMessage = "Login failed";
+      try {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+      } catch (e) {
+        // If JSON parse fails, read as text (likely an HTML error page)
+        const textError = await response.text();
+        console.error("Login Error (Non-JSON):", textError);
+        // Extract a meaningful message if possible, or use generic
+        if (textError.includes("<html")) {
+          errorMessage = `Server Error (${response.status}): ${response.statusText}`;
+        } else {
+          errorMessage = textError || `Server Error (${response.status})`;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

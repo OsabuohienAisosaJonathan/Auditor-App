@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, RefreshCw } from "lucide-react";
-import logoDarkImage from "@/assets/miauditops-logo-dark.jpeg";
+import logoDarkImage from "@/assets/miauditops-logo-dark.png";
 
 export default function CheckEmail() {
   const [, setLocation] = useLocation();
@@ -17,7 +17,7 @@ export default function CheckEmail() {
 
   const handleResend = async () => {
     const emailToUse = email || emailFromUrl;
-    
+
     if (!emailToUse) {
       setShowResendForm(true);
       return;
@@ -59,8 +59,8 @@ export default function CheckEmail() {
   return (
     <div className="public-dark min-h-screen flex flex-col bg-background">
       <div className="p-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => setLocation("/")}
           className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/10"
           data-testid="button-back-home"
@@ -73,10 +73,10 @@ export default function CheckEmail() {
         <div className="w-full max-w-md">
           <div className="p-8 rounded-xl border border-border shadow-lg bg-card text-center">
             <Link href="/">
-              <img 
-                src={logoDarkImage} 
-                alt="MiAuditOps" 
-                className="h-14 mx-auto object-contain cursor-pointer mb-6" 
+              <img
+                src={logoDarkImage}
+                alt="MiAuditOps"
+                className="h-14 mx-auto object-contain cursor-pointer mb-6"
               />
             </Link>
 
@@ -87,9 +87,9 @@ export default function CheckEmail() {
             <h1 className="text-2xl font-display font-bold mb-2 text-foreground">
               Check your email
             </h1>
-            
+
             <p className="text-muted-foreground mb-6">
-              We've sent a verification link to your email address. 
+              We've sent a verification link to your email address.
               Please click the link to verify your account.
             </p>
 

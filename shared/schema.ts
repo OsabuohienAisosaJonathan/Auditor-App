@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, decimal, jsonb, boolean, date } from "drizzle-orm/pg-core";
+import { mysqlTable, text, varchar, int, timestamp, datetime, decimal, json, boolean, date, index } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -16,8 +16,8 @@ export const ORG_TYPES = ["company", "auditor"] as const;
 export type OrgType = typeof ORG_TYPES[number];
 
 // Organizations table (tenants)
-export const organizations = pgTable("organizations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const organizations = mysqlTable("organizations", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   type: text("type").notNull().default("company"),
   email: text("email"),
@@ -35,9 +35,9 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").references(() => organizations.id),
+export const users = mysqlTable("users", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   organizationRole: text("organization_role").default("member"),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
@@ -52,42 +52,42 @@ export const users = pgTable("users", {
   mustChangePassword: boolean("must_change_password").default(false),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiry: timestamp("password_reset_expiry"),
-  loginAttempts: integer("login_attempts").default(0),
+  loginAttempts: int("login_attempts").default(0),
   lockedUntil: timestamp("locked_until"),
   isLocked: boolean("is_locked").default(false),
   lockedReason: text("locked_reason"),
   lastLoginAt: timestamp("last_login_at"),
-  accessScope: jsonb("access_scope").$type<{ clientIds?: string[]; departmentIds?: string[]; global?: boolean }>(),
+  accessScope: json("access_scope").$type<{ clientIds?: string[]; departmentIds?: string[]; global?: boolean }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const clients = pgTable("clients", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").references(() => organizations.id),
+export const clients = mysqlTable("clients", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"),
-  riskScore: integer("risk_score").default(0),
+  riskScore: int("risk_score").default(0),
   varianceThreshold: decimal("variance_threshold", { precision: 5, scale: 2 }).default("5.00"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Categories are optional grouping labels under a client (e.g., F&B, Front Desk, Admin)
-export const categories = pgTable("categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+export const categories = mysqlTable("categories", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
+  deletedBy: varchar("deleted_by", { length: 36 }).references(() => users.id),
 });
 
 // Organization settings for company profile and currency (tenant-scoped)
-export const organizationSettings = pgTable("organization_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull().references(() => organizations.id).unique(),
+export const organizationSettings = mysqlTable("organization_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id).unique(),
   companyName: text("company_name"),
   address: text("address"),
   email: text("email"),
@@ -95,17 +95,17 @@ export const organizationSettings = pgTable("organization_settings", {
   currency: text("currency").notNull().default("NGN"),
   logoUrl: text("logo_url"),
   reportFooterNote: text("report_footer_note"),
-  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // User settings for individual preferences (user-scoped)
-export const userSettings = pgTable("user_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+export const userSettings = mysqlTable("user_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id).unique(),
   theme: text("theme").notNull().default("light"),
   autoSaveEnabled: boolean("auto_save_enabled").notNull().default(true),
-  autoSaveIntervalSeconds: integer("auto_save_interval_seconds").notNull().default(60),
+  autoSaveIntervalSeconds: int("auto_save_interval_seconds").notNull().default(60),
   varianceThresholdPercent: decimal("variance_threshold_percent", { precision: 5, scale: 2 }).notNull().default("5.00"),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
   exceptionAlertsEnabled: boolean("exception_alerts_enabled").notNull().default(true),
@@ -115,37 +115,37 @@ export const userSettings = pgTable("user_settings", {
 });
 
 // Notifications for in-app and email alerts
-export const notifications = pgTable("notifications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+export const notifications = mysqlTable("notifications", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // 'exception', 'variance', 'system', 'export'
   title: text("title").notNull(),
   message: text("message").notNull(),
   refType: text("ref_type"), // 'exception', 'reconciliation', 'export', etc.
-  refId: varchar("ref_id"),
+  refId: varchar("ref_id", { length: 255 }),
   isRead: boolean("is_read").notNull().default(false),
   emailSent: boolean("email_sent").notNull().default(false),
   emailSentAt: timestamp("email_sent_at"),
   emailError: text("email_error"),
-  metadata: jsonb("metadata"),
+  metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Data exports for tenant backup/export functionality
-export const dataExports = pgTable("data_exports", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+export const dataExports = mysqlTable("data_exports", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   format: text("format").notNull(), // 'csv', 'excel', 'json'
   status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed'
   filename: text("filename"),
   filePath: text("file_path"),
-  fileSize: integer("file_size"),
-  dataTypes: text("data_types").array().notNull(), // ['clients', 'departments', 'items', etc.]
+  fileSize: int("file_size"),
+  dataTypes: json("data_types").notNull(), // ['clients', 'departments', 'items', etc.]
   dateRangeStart: date("date_range_start"),
   dateRangeEnd: date("date_range_end"),
-  recordCount: integer("record_count"),
+  recordCount: int("record_count"),
   error: text("error"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -153,20 +153,20 @@ export const dataExports = pgTable("data_exports", {
 });
 
 // Departments are the core operational unit - all transactions and reconciliations tie to departments
-export const departments = pgTable("departments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  categoryId: varchar("category_id").references(() => categories.id, { onDelete: "set null" }),
+export const departments = mysqlTable("departments", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  categoryId: varchar("category_id", { length: 36 }).references(() => categories.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"),
   suspendReason: text("suspend_reason"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const suppliers = pgTable("suppliers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+export const suppliers = mysqlTable("suppliers", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   contactPerson: text("contact_person"),
   phone: text("phone"),
@@ -176,11 +176,11 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const items = pgTable("items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  categoryId: varchar("category_id").references(() => categories.id, { onDelete: "set null" }),
-  supplierId: varchar("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+export const items = mysqlTable("items", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  categoryId: varchar("category_id", { length: 36 }).references(() => categories.id, { onDelete: "set null" }),
+  supplierId: varchar("supplier_id", { length: 36 }).references(() => suppliers.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   sku: text("sku"),
   category: text("category").notNull().default("general"),
@@ -191,30 +191,30 @@ export const items = pgTable("items", {
   retailPrice: decimal("retail_price", { precision: 12, scale: 2 }),
   vipPrice: decimal("vip_price", { precision: 12, scale: 2 }),
   customPrice: decimal("custom_price", { precision: 12, scale: 2 }),
-  reorderLevel: integer("reorder_level").default(10),
+  reorderLevel: int("reorder_level").default(10),
   serialTracking: text("serial_tracking").notNull().default("none"),
   serialNotes: text("serial_notes"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const purchaseLines = pgTable("purchase_lines", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  purchaseId: varchar("purchase_id").notNull().references(() => purchases.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+export const purchaseLines = mysqlTable("purchase_lines", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  purchaseId: varchar("purchase_id", { length: 36 }).notNull().references(() => purchases.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const stockCounts = pgTable("stock_counts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  storeDepartmentId: varchar("store_department_id").references(() => inventoryDepartments.id, { onDelete: "set null" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
+export const stockCounts = mysqlTable("stock_counts", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  storeDepartmentId: varchar("store_department_id", { length: 36 }).references(() => inventoryDepartments.id, { onDelete: "set null" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
   openingQty: decimal("opening_qty", { precision: 10, scale: 2 }).default("0.00"),
   addedQty: decimal("added_qty", { precision: 10, scale: 2 }).default("0.00"),
   receivedQty: decimal("received_qty", { precision: 10, scale: 2 }).default("0.00"),
@@ -226,15 +226,15 @@ export const stockCounts = pgTable("stock_counts", {
   costPriceSnapshot: decimal("cost_price_snapshot", { precision: 12, scale: 2 }).default("0.00"),
   sellingPriceSnapshot: decimal("selling_price_snapshot", { precision: 12, scale: 2 }).default("0.00"),
   notes: text("notes"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const salesEntries = pgTable("sales_entries", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
+export const salesEntries = mysqlTable("sales_entries", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
   shift: text("shift").default("full"),
   amount: decimal("amount", { precision: 12, scale: 2 }).default("0.00"),
   complimentaryAmount: decimal("complimentary_amount", { precision: 12, scale: 2 }).default("0.00"),
@@ -248,22 +248,22 @@ export const salesEntries = pgTable("sales_entries", {
   totalSales: decimal("total_sales", { precision: 12, scale: 2 }).notNull(),
   mode: text("mode").default("summary"),
   evidenceUrl: text("evidence_url"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Purchases are now tied to departments (e.g., "Store" department for inventory purchases)
-export const purchases = pgTable("purchases", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
+export const purchases = mysqlTable("purchases", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
   supplierName: text("supplier_name").notNull(),
   invoiceRef: text("invoice_ref").notNull(),
-  invoiceDate: timestamp("invoice_date").notNull(),
+  invoiceDate: datetime("invoice_date").notNull(),
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
   status: text("status").default("draft"),
   evidenceUrl: text("evidence_url"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -279,14 +279,14 @@ export type MovementType = typeof MOVEMENT_TYPES[number];
 export const ADJUSTMENT_DIRECTIONS = ["increase", "decrease"] as const;
 export type AdjustmentDirection = typeof ADJUSTMENT_DIRECTIONS[number];
 
-export const stockMovements = pgTable("stock_movements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  outletId: varchar("outlet_id"),
+export const stockMovements = mysqlTable("stock_movements", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  outletId: varchar("outlet_id", { length: 36 }),
   movementType: text("movement_type").notNull(),
-  fromSrdId: varchar("from_srd_id"),
-  toSrdId: varchar("to_srd_id"),
+  fromSrdId: varchar("from_srd_id", { length: 36 }),
+  toSrdId: varchar("to_srd_id", { length: 36 }),
   date: timestamp("date").defaultNow().notNull(),
   adjustmentDirection: text("adjustment_direction"),
   sourceLocation: text("source_location"),
@@ -296,50 +296,50 @@ export const stockMovements = pgTable("stock_movements", {
   totalValue: decimal("total_value", { precision: 12, scale: 2 }).default("0.00"),
   notes: text("notes"),
   authorizedBy: text("authorized_by"),
-  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedBy: varchar("approved_by", { length: 36 }).references(() => users.id),
   approvedAt: timestamp("approved_at"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  idempotencyKey: varchar("idempotency_key"),
-  sourceRef: varchar("source_ref"),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }),
+  sourceRef: varchar("source_ref", { length: 255 }),
 });
 
 // Stock movement line items for per-item tracking
-export const stockMovementLines = pgTable("stock_movement_lines", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  movementId: varchar("movement_id").notNull().references(() => stockMovements.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+export const stockMovementLines = mysqlTable("stock_movement_lines", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  movementId: varchar("movement_id", { length: 36 }).notNull().references(() => stockMovements.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   qty: decimal("qty", { precision: 10, scale: 2 }).notNull(),
   unitCost: decimal("unit_cost", { precision: 12, scale: 2 }).notNull(),
   lineValue: decimal("line_value", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const reconciliations = pgTable("reconciliations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
-  openingStock: jsonb("opening_stock").notNull(),
-  additions: jsonb("additions").notNull(),
-  expectedUsage: jsonb("expected_usage").notNull(),
-  physicalCount: jsonb("physical_count").notNull(),
+export const reconciliations = mysqlTable("reconciliations", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
+  openingStock: json("opening_stock").notNull(),
+  additions: json("additions").notNull(),
+  expectedUsage: json("expected_usage").notNull(),
+  physicalCount: json("physical_count").notNull(),
   varianceQty: decimal("variance_qty", { precision: 10, scale: 2 }).default("0.00"),
   varianceValue: decimal("variance_value", { precision: 12, scale: 2 }).default("0.00"),
   status: text("status").default("pending"),
-  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedBy: varchar("approved_by", { length: 36 }).references(() => users.id),
   approvedAt: timestamp("approved_at"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Exceptions are tied to departments
-export const exceptions = pgTable("exceptions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const exceptions = mysqlTable("exceptions", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   caseNumber: text("case_number").notNull().unique(),
-  clientId: varchar("client_id").references(() => clients.id, { onDelete: "cascade" }),
-  outletId: varchar("outlet_id"),
-  departmentId: varchar("department_id").references(() => departments.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id, { onDelete: "cascade" }),
+  outletId: varchar("outlet_id", { length: 36 }),
+  departmentId: varchar("department_id", { length: 36 }).references(() => departments.id, { onDelete: "cascade" }),
   date: text("date").notNull().default(sql`CURRENT_DATE::text`),
   summary: text("summary").notNull(),
   description: text("description"),
@@ -347,81 +347,83 @@ export const exceptions = pgTable("exceptions", {
   severity: text("severity").default("medium"),
   status: text("status").default("open"),
   outcome: text("outcome").default("pending"), // pending, true, false, mismatched, partial
-  evidenceUrls: text("evidence_urls").array(),
-  assignedTo: varchar("assigned_to").references(() => users.id),
+  evidenceUrls: json("evidence_urls"),
+  assignedTo: varchar("assigned_to", { length: 36 }).references(() => users.id),
   resolvedAt: timestamp("resolved_at"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
+  deletedBy: varchar("deleted_by", { length: 36 }).references(() => users.id),
   deleteReason: text("delete_reason"),
 });
 
-export const exceptionComments = pgTable("exception_comments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  exceptionId: varchar("exception_id").notNull().references(() => exceptions.id, { onDelete: "cascade" }),
+export const exceptionComments = mysqlTable("exception_comments", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  exceptionId: varchar("exception_id", { length: 36 }).notNull().references(() => exceptions.id, { onDelete: "cascade" }),
   comment: text("comment").notNull(),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Exception activity feed for investigation timeline
-export const exceptionActivity = pgTable("exception_activity", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  exceptionId: varchar("exception_id").notNull().references(() => exceptions.id, { onDelete: "cascade" }),
+export const exceptionActivity = mysqlTable("exception_activity", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  exceptionId: varchar("exception_id", { length: 36 }).notNull().references(() => exceptions.id, { onDelete: "cascade" }),
   activityType: text("activity_type").notNull().default("note"), // note, status_change, outcome_change, system
   message: text("message").notNull(),
   previousValue: text("previous_value"),
   newValue: text("new_value"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const auditLogs = pgTable("audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+export const auditLogs = mysqlTable("audit_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
   action: text("action").notNull(),
   entity: text("entity").notNull(),
-  entityId: varchar("entity_id"),
+  entityId: varchar("entity_id", { length: 255 }),
   details: text("details"),
   ipAddress: text("ip_address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  createdAtIndex: index("audit_logs_created_at_idx").on(table.createdAt),
+}));
 
-export const adminActivityLogs = pgTable("admin_activity_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  actorId: varchar("actor_id").notNull().references(() => users.id, { onDelete: "set null" }),
-  targetUserId: varchar("target_user_id").references(() => users.id, { onDelete: "set null" }),
+export const adminActivityLogs = mysqlTable("admin_activity_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  actorId: varchar("actor_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "set null" }),
+  targetUserId: varchar("target_user_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
   actionType: text("action_type").notNull(),
-  beforeState: jsonb("before_state"),
-  afterState: jsonb("after_state"),
+  beforeState: json("before_state"),
+  afterState: json("after_state"),
   reason: text("reason"),
   ipAddress: text("ip_address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const systemSettings = pgTable("system_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const systemSettings = mysqlTable("system_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   key: text("key").notNull().unique(),
-  value: jsonb("value").notNull(),
-  updatedBy: varchar("updated_by").references(() => users.id),
+  value: json("value").notNull(),
+  updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Payment declarations are now tied to client + department + date
-export const paymentDeclarations = pgTable("payment_declarations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
+export const paymentDeclarations = mysqlTable("payment_declarations", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
   reportedCash: decimal("reported_cash", { precision: 12, scale: 2 }).default("0.00"),
   reportedPosSettlement: decimal("reported_pos_settlement", { precision: 12, scale: 2 }).default("0.00"),
   reportedTransfers: decimal("reported_transfers", { precision: 12, scale: 2 }).default("0.00"),
   totalReported: decimal("total_reported", { precision: 12, scale: 2 }).default("0.00"),
   notes: text("notes"),
-  supportingDocuments: jsonb("supporting_documents").$type<{ name: string; url: string; type: string }[]>(),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  supportingDocuments: json("supporting_documents").$type<{ name: string; url: string; type: string }[]>(),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -433,12 +435,12 @@ export const paymentDeclarations = pgTable("payment_declarations", {
 export const ACCESS_STATUS = ["assigned", "suspended", "removed"] as const;
 export type AccessStatus = typeof ACCESS_STATUS[number];
 
-export const userClientAccess = pgTable("user_client_access", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+export const userClientAccess = mysqlTable("user_client_access", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("assigned"),
-  assignedBy: varchar("assigned_by").notNull().references(() => users.id),
+  assignedBy: varchar("assigned_by", { length: 36 }).notNull().references(() => users.id),
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   suspendReason: text("suspend_reason"),
@@ -455,14 +457,14 @@ export type AuditPeriod = typeof AUDIT_PERIOD[number];
 export const AUDIT_CONTEXT_STATUS = ["active", "cleared"] as const;
 export type AuditContextStatus = typeof AUDIT_CONTEXT_STATUS[number];
 
-export const auditContexts = pgTable("audit_contexts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").references(() => departments.id, { onDelete: "cascade" }),
+export const auditContexts = mysqlTable("audit_contexts", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).references(() => departments.id, { onDelete: "cascade" }),
   period: text("period").notNull().default("daily"),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
+  startDate: datetime("start_date").notNull(),
+  endDate: datetime("end_date").notNull(),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
@@ -475,20 +477,20 @@ export const auditContexts = pgTable("audit_contexts", {
 export const AUDIT_STATUS = ["draft", "submitted", "locked"] as const;
 export type AuditStatus = typeof AUDIT_STATUS[number];
 
-export const audits = pgTable("audits", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
+export const audits = mysqlTable("audits", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
   period: text("period").notNull().default("daily"),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
+  startDate: datetime("start_date").notNull(),
+  endDate: datetime("end_date").notNull(),
   status: text("status").notNull().default("draft"),
-  submittedBy: varchar("submitted_by").references(() => users.id),
+  submittedBy: varchar("submitted_by", { length: 36 }).references(() => users.id),
   submittedAt: timestamp("submitted_at"),
-  lockedBy: varchar("locked_by").references(() => users.id),
+  lockedBy: varchar("locked_by", { length: 36 }).references(() => users.id),
   lockedAt: timestamp("locked_at"),
   notes: text("notes"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -497,11 +499,11 @@ export const audits = pgTable("audits", {
 // AUDIT REISSUE PERMISSIONS (Super Admin grants for editing submitted audits)
 // ============================================================
 
-export const auditReissuePermissions = pgTable("audit_reissue_permissions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  auditId: varchar("audit_id").notNull().references(() => audits.id, { onDelete: "cascade" }),
-  grantedTo: varchar("granted_to").notNull().references(() => users.id, { onDelete: "cascade" }),
-  grantedBy: varchar("granted_by").notNull().references(() => users.id),
+export const auditReissuePermissions = mysqlTable("audit_reissue_permissions", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  auditId: varchar("audit_id", { length: 36 }).notNull().references(() => audits.id, { onDelete: "cascade" }),
+  grantedTo: varchar("granted_to", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  grantedBy: varchar("granted_by", { length: 36 }).notNull().references(() => users.id),
   grantedAt: timestamp("granted_at").defaultNow().notNull(),
   expiresAt: timestamp("expires_at"),
   scope: text("scope").notNull().default("edit_after_submission"),
@@ -513,17 +515,17 @@ export const auditReissuePermissions = pgTable("audit_reissue_permissions", {
 // ENHANCED AUDIT TRAIL (for state changes with before/after snapshots)
 // ============================================================
 
-export const auditChangeLog = pgTable("audit_change_log", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  auditId: varchar("audit_id").references(() => audits.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  clientId: varchar("client_id").references(() => clients.id),
-  departmentId: varchar("department_id").references(() => departments.id),
+export const auditChangeLog = mysqlTable("audit_change_log", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  auditId: varchar("audit_id", { length: 36 }).references(() => audits.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id),
+  departmentId: varchar("department_id", { length: 36 }).references(() => departments.id),
   actionType: text("action_type").notNull(),
   entityType: text("entity_type").notNull(),
-  entityId: varchar("entity_id"),
-  beforeState: jsonb("before_state"),
-  afterState: jsonb("after_state"),
+  entityId: varchar("entity_id", { length: 255 }),
+  beforeState: json("before_state"),
+  afterState: json("after_state"),
   reason: text("reason"),
   ipAddress: text("ip_address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -533,22 +535,22 @@ export const auditChangeLog = pgTable("audit_change_log", {
 // STORE ISSUES (Store → Department transfers) - LEGACY
 // ============================================================
 
-export const storeIssues = pgTable("store_issues", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  issueDate: timestamp("issue_date").notNull(),
-  fromDepartmentId: varchar("from_department_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  toDepartmentId: varchar("to_department_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+export const storeIssues = mysqlTable("store_issues", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  issueDate: datetime("issue_date").notNull(),
+  fromDepartmentId: varchar("from_department_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  toDepartmentId: varchar("to_department_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
   notes: text("notes"),
   status: text("status").notNull().default("posted"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const storeIssueLines = pgTable("store_issue_lines", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  storeIssueId: varchar("store_issue_id").notNull().references(() => storeIssues.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+export const storeIssueLines = mysqlTable("store_issue_lines", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  storeIssueId: varchar("store_issue_id", { length: 36 }).notNull().references(() => storeIssues.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   qtyIssued: decimal("qty_issued", { precision: 10, scale: 2 }).notNull(),
   costPriceSnapshot: decimal("cost_price_snapshot", { precision: 12, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -561,19 +563,19 @@ export const storeIssueLines = pgTable("store_issue_lines", {
 export const SRD_TRANSFER_TYPES = ["issue", "return", "transfer"] as const;
 export type SrdTransferType = typeof SRD_TRANSFER_TYPES[number];
 
-export const srdTransfers = pgTable("srd_transfers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  refId: varchar("ref_id").notNull(),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  fromSrdId: varchar("from_srd_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  toSrdId: varchar("to_srd_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+export const srdTransfers = mysqlTable("srd_transfers", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  refId: varchar("ref_id", { length: 255 }).notNull(),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  fromSrdId: varchar("from_srd_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  toSrdId: varchar("to_srd_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   qty: decimal("qty", { precision: 10, scale: 2 }).notNull(),
-  transferDate: timestamp("transfer_date").notNull(),
+  transferDate: datetime("transfer_date").notNull(),
   transferType: text("transfer_type").notNull().default("transfer"),
   notes: text("notes"),
   status: text("status").notNull().default("posted"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -587,7 +589,7 @@ export type SrdLedgerType = typeof SRD_LEDGER_TYPES[number];
 
 export const SRD_MOVEMENT_EVENT_TYPES = [
   "PURCHASE",
-  "REQ_MAIN_TO_DEP", 
+  "REQ_MAIN_TO_DEP",
   "RETURN_DEP_TO_MAIN",
   "TRANSFER_DEP_TO_DEP",
   "WASTE",
@@ -597,35 +599,35 @@ export const SRD_MOVEMENT_EVENT_TYPES = [
 ] as const;
 export type SrdMovementEventType = typeof SRD_MOVEMENT_EVENT_TYPES[number];
 
-export const srdLedgerDaily = pgTable("srd_ledger_daily", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  srdId: varchar("srd_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+export const srdLedgerDaily = mysqlTable("srd_ledger_daily", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  srdId: varchar("srd_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
   srdType: text("srd_type").notNull(), // 'MAIN' or 'DEPARTMENT'
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   ledgerDate: date("ledger_date").notNull(),
-  
+
   // Opening/Closing
   openingQty: decimal("opening_qty", { precision: 18, scale: 2 }).notNull().default("0"),
   closingQty: decimal("closing_qty", { precision: 18, scale: 2 }).notNull().default("0"),
-  
+
   // MAIN store movements
   purchaseAddedQty: decimal("purchase_added_qty", { precision: 18, scale: 2 }).notNull().default("0"),
   returnsInQty: decimal("returns_in_qty", { precision: 18, scale: 2 }).notNull().default("0"), // dept -> main returns received
   reqDepTotalQty: decimal("req_dep_total_qty", { precision: 18, scale: 2 }).notNull().default("0"), // main -> dept requisitions issued
-  
+
   // DEPARTMENT store movements
   fromMainQty: decimal("from_main_qty", { precision: 18, scale: 2 }).notNull().default("0"), // received from main requisitions
   interInQty: decimal("inter_in_qty", { precision: 18, scale: 2 }).notNull().default("0"), // received from other dept SRD
   interOutQty: decimal("inter_out_qty", { precision: 18, scale: 2 }).notNull().default("0"), // sent to other dept SRD
   returnsOutToMain: decimal("returns_out_to_main", { precision: 18, scale: 2 }).notNull().default("0"), // dept -> main returns sent
   soldQty: decimal("sold_qty", { precision: 18, scale: 2 }).notNull().default("0"),
-  
+
   // Shared movements
   wasteQty: decimal("waste_qty", { precision: 18, scale: 2 }).notNull().default("0"),
   writeOffQty: decimal("write_off_qty", { precision: 18, scale: 2 }).notNull().default("0"),
   adjustmentQty: decimal("adjustment_qty", { precision: 18, scale: 2 }).notNull().default("0"), // can be negative
-  
+
   // Audit fields
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -636,14 +638,14 @@ export const srdLedgerDaily = pgTable("srd_ledger_daily", {
 // All movements go through SrdLedgerService
 // ============================================================
 
-export const srdStockMovements = pgTable("srd_stock_movements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+export const srdStockMovements = mysqlTable("srd_stock_movements", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
   movementDate: date("movement_date").notNull(),
   eventType: text("event_type").notNull(), // PURCHASE, REQ_MAIN_TO_DEP, etc.
-  fromSrdId: varchar("from_srd_id").references(() => inventoryDepartments.id, { onDelete: "set null" }),
-  toSrdId: varchar("to_srd_id").references(() => inventoryDepartments.id, { onDelete: "set null" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+  fromSrdId: varchar("from_srd_id", { length: 36 }).references(() => inventoryDepartments.id, { onDelete: "set null" }),
+  toSrdId: varchar("to_srd_id", { length: 36 }).references(() => inventoryDepartments.id, { onDelete: "set null" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   qty: decimal("qty", { precision: 18, scale: 2 }).notNull(),
   description: text("description"),
   isDeleted: boolean("is_deleted").notNull().default(false), // for edit/reversal tracking
@@ -655,12 +657,12 @@ export const srdStockMovements = pgTable("srd_stock_movements", {
 // STORE STOCK (Daily store inventory balances) - LEGACY
 // ============================================================
 
-export const storeStock = pgTable("store_stock", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  storeDepartmentId: varchar("store_department_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
+export const storeStock = mysqlTable("store_stock", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  storeDepartmentId: varchar("store_department_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
   openingQty: decimal("opening_qty", { precision: 10, scale: 2 }).default("0.00"),
   addedQty: decimal("added_qty", { precision: 10, scale: 2 }).default("0.00"),
   issuedQty: decimal("issued_qty", { precision: 10, scale: 2 }).default("0.00"),
@@ -677,7 +679,7 @@ export const storeStock = pgTable("store_stock", {
   physicalClosingQty: decimal("physical_closing_qty", { precision: 10, scale: 2 }),
   varianceQty: decimal("variance_qty", { precision: 10, scale: 2 }).default("0.00"),
   costPriceSnapshot: decimal("cost_price_snapshot", { precision: 12, scale: 2 }).default("0.00"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -689,18 +691,18 @@ export const storeStock = pgTable("store_stock", {
 export const GRN_STATUS = ["pending", "received"] as const;
 export type GRNStatus = typeof GRN_STATUS[number];
 
-export const goodsReceivedNotes = pgTable("goods_received_notes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  supplierId: varchar("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+export const goodsReceivedNotes = mysqlTable("goods_received_notes", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  supplierId: varchar("supplier_id", { length: 36 }).references(() => suppliers.id, { onDelete: "set null" }),
   supplierName: text("supplier_name").notNull(),
-  date: timestamp("date").notNull(),
+  date: datetime("date").notNull(),
   invoiceRef: text("invoice_ref").notNull(),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"),
   evidenceUrl: text("evidence_url"),
   evidenceFileName: text("evidence_file_name"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -709,12 +711,12 @@ export const goodsReceivedNotes = pgTable("goods_received_notes", {
 // STORE NAMES (SRDs - Stock Reconciliation Departments, client-specific)
 // ============================================================
 
-export const storeNames = pgTable("store_names", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+export const storeNames = mysqlTable("store_names", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -725,11 +727,11 @@ export const storeNames = pgTable("store_names", {
 export const INVENTORY_TYPES = ["MAIN_STORE", "DEPARTMENT_STORE"] as const;
 export type InventoryType = typeof INVENTORY_TYPES[number];
 
-export const inventoryDepartments = pgTable("inventory_departments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  storeNameId: varchar("store_name_id").notNull().references(() => storeNames.id, { onDelete: "restrict" }),
-  departmentId: varchar("department_id").references(() => departments.id, { onDelete: "set null" }),
+export const inventoryDepartments = mysqlTable("inventory_departments", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  storeNameId: varchar("store_name_id", { length: 36 }).notNull().references(() => storeNames.id, { onDelete: "restrict" }),
+  departmentId: varchar("department_id", { length: 36 }).references(() => departments.id, { onDelete: "set null" }),
   inventoryType: text("inventory_type").notNull(),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -739,11 +741,11 @@ export const inventoryDepartments = pgTable("inventory_departments", {
 // INVENTORY DEPARTMENT CATEGORIES (Category assignments per SRD)
 // ============================================================
 
-export const inventoryDepartmentCategories = pgTable("inventory_department_categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  inventoryDepartmentId: varchar("inventory_department_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  categoryId: varchar("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+export const inventoryDepartmentCategories = mysqlTable("inventory_department_categories", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  inventoryDepartmentId: varchar("inventory_department_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  categoryId: varchar("category_id", { length: 36 }).notNull().references(() => categories.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -754,31 +756,31 @@ export const inventoryDepartmentCategories = pgTable("inventory_department_categ
 export const RECEIVABLE_STATUSES = ["open", "part_paid", "settled", "written_off"] as const;
 export type ReceivableStatus = typeof RECEIVABLE_STATUSES[number];
 
-export const receivables = pgTable("receivables", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  auditDate: timestamp("audit_date").notNull(),
+export const receivables = mysqlTable("receivables", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  auditDate: datetime("audit_date").notNull(),
   varianceAmount: decimal("variance_amount", { precision: 12, scale: 2 }).notNull(),
   amountPaid: decimal("amount_paid", { precision: 12, scale: 2 }).default("0.00"),
   balanceRemaining: decimal("balance_remaining", { precision: 12, scale: 2 }).notNull(),
   status: text("status").notNull().default("open"),
   comments: text("comments"),
   evidenceUrl: text("evidence_url"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const receivableHistory = pgTable("receivable_history", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  receivableId: varchar("receivable_id").notNull().references(() => receivables.id, { onDelete: "cascade" }),
+export const receivableHistory = mysqlTable("receivable_history", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  receivableId: varchar("receivable_id", { length: 36 }).notNull().references(() => receivables.id, { onDelete: "cascade" }),
   action: text("action").notNull(),
   previousStatus: text("previous_status"),
   newStatus: text("new_status"),
   amountPaid: decimal("amount_paid", { precision: 12, scale: 2 }),
   notes: text("notes"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -789,29 +791,29 @@ export const receivableHistory = pgTable("receivable_history", {
 export const SURPLUS_STATUSES = ["open", "classified", "cleared", "posted"] as const;
 export type SurplusStatus = typeof SURPLUS_STATUSES[number];
 
-export const surpluses = pgTable("surpluses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  departmentId: varchar("department_id").notNull().references(() => departments.id, { onDelete: "cascade" }),
-  auditDate: timestamp("audit_date").notNull(),
+export const surpluses = mysqlTable("surpluses", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  departmentId: varchar("department_id", { length: 36 }).notNull().references(() => departments.id, { onDelete: "cascade" }),
+  auditDate: datetime("audit_date").notNull(),
   surplusAmount: decimal("surplus_amount", { precision: 12, scale: 2 }).notNull(),
   status: text("status").notNull().default("open"),
   classification: text("classification"),
   comments: text("comments"),
   evidenceUrl: text("evidence_url"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const surplusHistory = pgTable("surplus_history", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  surplusId: varchar("surplus_id").notNull().references(() => surpluses.id, { onDelete: "cascade" }),
+export const surplusHistory = mysqlTable("surplus_history", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  surplusId: varchar("surplus_id", { length: 36 }).notNull().references(() => surpluses.id, { onDelete: "cascade" }),
   action: text("action").notNull(),
   previousStatus: text("previous_status"),
   newStatus: text("new_status"),
   notes: text("notes"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -822,16 +824,16 @@ export const surplusHistory = pgTable("surplus_history", {
 export const SERIAL_EVENT_TYPES = ["count", "transfer", "adjustment", "waste", "write_off", "received"] as const;
 export type SerialEventType = typeof SERIAL_EVENT_TYPES[number];
 
-export const itemSerialEvents = pgTable("item_serial_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
-  srdId: varchar("srd_id").notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+export const itemSerialEvents = mysqlTable("item_serial_events", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
+  srdId: varchar("srd_id", { length: 36 }).notNull().references(() => inventoryDepartments.id, { onDelete: "cascade" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
   eventType: text("event_type").notNull(),
-  refId: varchar("ref_id"),
+  refId: varchar("ref_id", { length: 255 }),
   serialNumber: text("serial_number").notNull(),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -887,19 +889,19 @@ export const insertSrdLedgerDailySchema = createInsertSchema(srdLedgerDaily).omi
 export const insertSrdStockMovementSchema = createInsertSchema(srdStockMovements).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Purchase Item Events - history/audit trail of all item purchases
-export const purchaseItemEvents = pgTable("purchase_item_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  srdId: varchar("srd_id").references(() => inventoryDepartments.id, { onDelete: "set null" }),
-  itemId: varchar("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
+export const purchaseItemEvents = mysqlTable("purchase_item_events", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: varchar("client_id", { length: 36 }).notNull().references(() => clients.id, { onDelete: "cascade" }),
+  srdId: varchar("srd_id", { length: 36 }).references(() => inventoryDepartments.id, { onDelete: "set null" }),
+  itemId: varchar("item_id", { length: 36 }).notNull().references(() => items.id, { onDelete: "cascade" }),
+  date: datetime("date").notNull(),
   qty: decimal("qty", { precision: 10, scale: 2 }).notNull(),
   unitCostAtPurchase: decimal("unit_cost_at_purchase", { precision: 12, scale: 2 }).notNull(),
   totalCost: decimal("total_cost", { precision: 12, scale: 2 }).notNull(),
   supplierName: text("supplier_name"),
   invoiceNo: text("invoice_no"),
   notes: text("notes"),
-  createdBy: varchar("created_by").references(() => users.id),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -921,12 +923,12 @@ export const SUBSCRIPTION_PROVIDERS = ["manual", "manual_free", "paystack", "str
 export type SubscriptionProvider = typeof SUBSCRIPTION_PROVIDERS[number];
 
 // Subscriptions table for tenant billing and feature access
-export const subscriptions = pgTable("subscriptions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+export const subscriptions = mysqlTable("subscriptions", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id),
   planName: text("plan_name").notNull().default("starter"),
   billingPeriod: text("billing_period").notNull().default("monthly"),
-  slotsPurchased: integer("slots_purchased").notNull().default(1),
+  slotsPurchased: int("slots_purchased").notNull().default(1),
   status: text("status").notNull().default("active"),
   provider: text("provider").default("manual"),
   startDate: timestamp("start_date").defaultNow().notNull(),
@@ -934,13 +936,13 @@ export const subscriptions = pgTable("subscriptions", {
   expiresAt: timestamp("expires_at"),
   endDate: timestamp("end_date"),
   notes: text("notes"),
-  updatedBy: varchar("updated_by"),
+  updatedBy: varchar("updated_by", { length: 36 }),
   // Owner overrides (null = use plan defaults)
-  maxClientsOverride: integer("max_clients_override"),
-  maxSrdDepartmentsOverride: integer("max_srd_departments_override"),
-  maxMainStoreOverride: integer("max_main_store_override"),
-  maxSeatsOverride: integer("max_seats_override"),
-  retentionDaysOverride: integer("retention_days_override"),
+  maxClientsOverride: int("max_clients_override"),
+  maxSrdDepartmentsOverride: int("max_srd_departments_override"),
+  maxMainStoreOverride: int("max_main_store_override"),
+  maxSeatsOverride: int("max_seats_override"),
+  retentionDaysOverride: int("retention_days_override"),
   // Paystack integration fields
   paystackCustomerCode: text("paystack_customer_code"),
   paystackSubscriptionCode: text("paystack_subscription_code"),
@@ -1037,24 +1039,24 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, Entitlements> = {
 };
 
 // Configurable Subscription Plans (editable by Owner/Platform Admin)
-export const subscriptionPlans = pgTable("subscription_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   slug: text("slug").notNull().unique(), // starter, growth, business, enterprise
   displayName: text("display_name").notNull(),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
-  sortOrder: integer("sort_order").notNull().default(0),
+  sortOrder: int("sort_order").notNull().default(0),
   // Pricing (in smallest currency unit, e.g., kobo for NGN)
   monthlyPrice: decimal("monthly_price", { precision: 12, scale: 2 }).notNull().default("0"),
   quarterlyPrice: decimal("quarterly_price", { precision: 12, scale: 2 }).notNull().default("0"),
   yearlyPrice: decimal("yearly_price", { precision: 12, scale: 2 }).notNull().default("0"),
   currency: text("currency").notNull().default("NGN"),
   // Slot & Capacity Limits
-  maxClients: integer("max_clients").notNull().default(1),
-  maxSrdDepartmentsPerClient: integer("max_srd_departments_per_client").notNull().default(4),
-  maxMainStorePerClient: integer("max_main_store_per_client").notNull().default(1),
-  maxSeats: integer("max_seats").notNull().default(2),
-  retentionDays: integer("retention_days").notNull().default(30),
+  maxClients: int("max_clients").notNull().default(1),
+  maxSrdDepartmentsPerClient: int("max_srd_departments_per_client").notNull().default(4),
+  maxMainStorePerClient: int("max_main_store_per_client").notNull().default(1),
+  maxSeats: int("max_seats").notNull().default(2),
+  retentionDays: int("retention_days").notNull().default(30),
   // Feature Flags (entitlements)
   canViewReports: boolean("can_view_reports").notNull().default(true),
   canDownloadReports: boolean("can_download_reports").notNull().default(false),
@@ -1075,13 +1077,13 @@ export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans
 export const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded"] as const;
 export type PaymentStatus = typeof PAYMENT_STATUSES[number];
 
-export const payments = pgTable("payments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+export const payments = mysqlTable("payments", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: varchar("organization_id", { length: 36 }).notNull().references(() => organizations.id),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("NGN"),
-  periodCoveredStart: timestamp("period_covered_start").notNull(),
-  periodCoveredEnd: timestamp("period_covered_end").notNull(),
+  periodCoveredStart: datetime("period_covered_start").notNull(),
+  periodCoveredEnd: datetime("period_covered_end").notNull(),
   status: text("status").notNull().default("pending"),
   reference: text("reference"),
   notes: text("notes"),
@@ -1201,15 +1203,15 @@ export const PLATFORM_ADMIN_ROLES = [
 export type PlatformAdminRole = typeof PLATFORM_ADMIN_ROLES[number];
 
 // Platform Admin Users - separate from tenant users
-export const platformAdminUsers = pgTable("platform_admin_users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const platformAdminUsers = mysqlTable("platform_admin_users", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   role: text("role").notNull().default("readonly_admin"),
   isActive: boolean("is_active").notNull().default(true),
   lastLoginAt: timestamp("last_login_at"),
-  loginAttempts: integer("login_attempts").default(0),
+  loginAttempts: int("login_attempts").default(0),
   lockedUntil: timestamp("locked_until"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1220,14 +1222,14 @@ export type InsertPlatformAdminUser = z.infer<typeof insertPlatformAdminUserSche
 export type PlatformAdminUser = typeof platformAdminUsers.$inferSelect;
 
 // Platform Admin Audit Log - tracks all admin actions
-export const platformAdminAuditLog = pgTable("platform_admin_audit_log", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  adminId: varchar("admin_id").notNull().references(() => platformAdminUsers.id),
+export const platformAdminAuditLog = mysqlTable("platform_admin_audit_log", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  adminId: varchar("admin_id", { length: 36 }).notNull().references(() => platformAdminUsers.id),
   actionType: text("action_type").notNull(),
   targetType: text("target_type").notNull(),
-  targetId: varchar("target_id"),
-  beforeJson: jsonb("before_json"),
-  afterJson: jsonb("after_json"),
+  targetId: varchar("target_id", { length: 255 }),
+  beforeJson: json("before_json"),
+  afterJson: json("after_json"),
   notes: text("notes"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),

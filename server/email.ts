@@ -7,12 +7,12 @@ export function getBaseUrl(req?: { headers?: { host?: string } }): string {
   if (process.env.APP_URL) {
     return process.env.APP_URL;
   }
-  
+
   if (req?.headers?.host) {
     const protocol = 'https';
     return `${protocol}://${req.headers.host}`;
   }
-  
+
   // Fallback for Replit - should never reach here in production
   // as req.headers.host is always available
   console.warn('[Email] No APP_URL set and no request host available');
@@ -25,13 +25,21 @@ export async function sendVerificationEmail(
   fullName: string,
   req?: { headers?: { host?: string } }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error('[Email] RESEND_API_KEY not configured - cannot send verification emails');
-    return { success: false, error: 'Email service not configured' };
-  }
-
   const baseUrl = getBaseUrl(req);
   const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
+
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.log('\n================================================================');
+    console.log('                 EMAIL SERVICE SIMULATION');
+    console.log('================================================================');
+    console.log(`To: ${email}`);
+    console.log(`Subject: Verify your MiAuditOps account`);
+    console.log(`\nHello ${fullName}, please verify your email:`);
+    console.log(`\nLINK: ${verifyUrl}`);
+    console.log('\n(No RESEND_API_KEY configured - logging email to console)');
+    console.log('================================================================\n');
+    return { success: true };
+  }
 
   try {
     const { error } = await resend.emails.send({
@@ -92,13 +100,21 @@ export async function sendPasswordResetEmail(
   fullName: string,
   req?: { headers?: { host?: string } }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error('[Email] RESEND_API_KEY not configured - cannot send password reset emails');
-    return { success: false, error: 'Email service not configured' };
-  }
-
   const baseUrl = getBaseUrl(req);
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.log('\n================================================================');
+    console.log('                 EMAIL SERVICE SIMULATION');
+    console.log('================================================================');
+    console.log(`To: ${email}`);
+    console.log(`Subject: Reset your MiAuditOps password`);
+    console.log(`\nHi ${fullName}, reset your password here:`);
+    console.log(`\nLINK: ${resetUrl}`);
+    console.log('\n(No RESEND_API_KEY configured - logging email to console)');
+    console.log('================================================================\n');
+    return { success: true };
+  }
 
   try {
     const { error } = await resend.emails.send({
@@ -159,13 +175,13 @@ export function logEmailConfigStatus(): void {
   } else {
     console.log('[Email] Resend email service configured');
   }
-  
+
   if (!process.env.FROM_EMAIL) {
     console.warn('[Email] WARNING: FROM_EMAIL is not set. Using default sender address.');
   } else {
     console.log(`[Email] FROM_EMAIL configured: ${process.env.FROM_EMAIL}`);
   }
-  
+
   if (!process.env.APP_URL) {
     console.warn('[Email] WARNING: APP_URL is not set. Email links will use request host as fallback.');
   }

@@ -11,19 +11,19 @@ interface ClientContextType {
   setSelectedClientId: (clientId: string | null) => void;
   clients: Client[];
   isLoading: boolean;
-  
+
   selectedCategory: Category | null;
   selectedCategoryId: string | null;
   setSelectedCategoryId: (categoryId: string | null) => void;
   categories: Category[];
   isLoadingCategories: boolean;
-  
+
   selectedDepartment: Department | null;
   selectedDepartmentId: string | null;
   setSelectedDepartmentId: (departmentId: string | null) => void;
   departments: Department[];
   isLoadingDepartments: boolean;
-  
+
   selectedDate: string;
   setSelectedDate: (date: string) => void;
 }
@@ -38,21 +38,21 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     }
     return null;
   });
-  
+
   const [selectedCategoryId, setSelectedCategoryIdState] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("selectedCategoryId") || null;
     }
     return null;
   });
-  
+
   const [selectedDepartmentId, setSelectedDepartmentIdState] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("selectedDepartmentId") || null;
     }
     return null;
   });
-  
+
   const [selectedDate, setSelectedDateState] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("selectedDate") || format(new Date(), "yyyy-MM-dd");
@@ -63,15 +63,15 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const { data: clientsData, isLoading: clientsQueryLoading } = useCachedQuery(
     ["clients"],
     clientsApi.getAll,
-    { 
+    {
       cacheEndpoint: "clients",
       staleTime: 0,
       refetchOnWindowFocus: true,
       enabled: !!user,
     }
   );
-  
-  const clients = clientsData || [];
+
+  const clients = Array.isArray(clientsData) ? clientsData : [];
   const isLoading = clientsQueryLoading && clients.length === 0;
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({

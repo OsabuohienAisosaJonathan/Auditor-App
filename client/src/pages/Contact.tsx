@@ -9,7 +9,7 @@ import { useLocation, Link } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Building2 } from "lucide-react";
-import logoDarkImage from "@/assets/miauditops-logo-dark.jpeg";
+import logoDarkImage from "@/assets/miauditops-logo-dark.png";
 
 export default function Contact() {
   const [, setLocation] = useLocation();
@@ -69,7 +69,7 @@ export default function Contact() {
               We're Here to Help
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Have questions about MiAuditOps? Need help getting started? 
+              Have questions about MiAuditOps? Need help getting started?
               Our team is ready to assist you.
             </p>
           </div>
@@ -187,8 +187,8 @@ export default function Contact() {
 
                     <div className="space-y-2">
                       <Label htmlFor="subject">Subject</Label>
-                      <Select 
-                        value={formData.subject} 
+                      <Select
+                        value={formData.subject}
                         onValueChange={(val) => setFormData({ ...formData, subject: val })}
                       >
                         <SelectTrigger className="h-11" data-testid="select-contact-subject">
@@ -218,8 +218,8 @@ export default function Contact() {
                       />
                     </div>
 
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full sm:w-auto px-8 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
                       disabled={isSubmitting}
                       data-testid="button-contact-submit"

@@ -1,0 +1,17 @@
+Connecting to database...
+Reading mysql_dump.sql...
+
+Error executing statement:
+CREATE TABLE system_settings (
+  id VARCHAR(36)  NOT NULL PRIMARY KEY,
+  key LONGTEXT NOT NULL,
+  value JSON NOT NULL,
+  updated_by VARCHAR(255),
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+Error: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'LONGTEXT NOT NULL,
+  value JSON NOT NULL,
+  updated_by VARCHAR(255),
+  update...' at line 3
+Import complete. Executed 1952 statements.

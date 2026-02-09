@@ -5,7 +5,7 @@ import { useLocation, Link } from "wouter";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, XCircle } from "lucide-react";
-import logoDarkImage from "@/assets/miauditops-logo-dark.jpeg";
+import logoDarkImage from "@/assets/miauditops-logo-dark.png";
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
@@ -29,7 +29,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     const formData = new FormData(e.currentTarget);
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
@@ -54,7 +54,7 @@ export default function ResetPassword() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         setResetSuccess(true);
         toast({
@@ -87,10 +87,10 @@ export default function ResetPassword() {
         <div className="w-full max-w-md space-y-8 p-8 rounded-xl border border-border shadow-lg bg-card">
           <div className="text-center space-y-4">
             <Link href="/" className="block mx-auto mb-4">
-              <img 
-                src={logoDarkImage} 
-                alt="MiAuditOps" 
-                className="h-24 mx-auto object-contain cursor-pointer" 
+              <img
+                src={logoDarkImage}
+                alt="MiAuditOps"
+                className="h-24 mx-auto object-contain cursor-pointer"
               />
             </Link>
             <div className="mx-auto w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -119,10 +119,10 @@ export default function ResetPassword() {
         <div className="w-full max-w-md space-y-8 p-8 rounded-xl border border-border shadow-lg bg-card">
           <div className="text-center space-y-4">
             <Link href="/" className="block mx-auto mb-4">
-              <img 
-                src={logoDarkImage} 
-                alt="MiAuditOps" 
-                className="h-24 mx-auto object-contain cursor-pointer" 
+              <img
+                src={logoDarkImage}
+                alt="MiAuditOps"
+                className="h-24 mx-auto object-contain cursor-pointer"
               />
             </Link>
             <div className="mx-auto w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
@@ -150,10 +150,10 @@ export default function ResetPassword() {
       <div className="w-full max-w-md space-y-8 p-8 rounded-xl border border-border shadow-lg bg-card">
         <div className="text-center space-y-2">
           <Link href="/" className="block mx-auto mb-4">
-            <img 
-              src={logoDarkImage} 
-              alt="MiAuditOps" 
-              className="h-24 mx-auto object-contain cursor-pointer" 
+            <img
+              src={logoDarkImage}
+              alt="MiAuditOps"
+              className="h-24 mx-auto object-contain cursor-pointer"
             />
           </Link>
           <h2 className="text-2xl font-bold text-foreground">Reset your password</h2>
@@ -165,10 +165,10 @@ export default function ResetPassword() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="password">New Password</Label>
-            <Input 
-              id="password" 
+            <Input
+              id="password"
               name="password"
-              type="password" 
+              type="password"
               className="h-10"
               required
               minLength={8}
@@ -176,13 +176,13 @@ export default function ResetPassword() {
             />
             <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <Input 
-              id="confirmPassword" 
+            <Input
+              id="confirmPassword"
               name="confirmPassword"
-              type="password" 
+              type="password"
               className="h-10"
               required
               minLength={8}
@@ -196,9 +196,9 @@ export default function ResetPassword() {
             </div>
           )}
 
-          <Button 
-            type="submit" 
-            className="w-full h-10 font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" 
+          <Button
+            type="submit"
+            className="w-full h-10 font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             disabled={isLoading}
             data-testid="button-reset-password"
           >

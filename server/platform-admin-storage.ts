@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { 
-  platformAdminUsers, 
+import {
+  platformAdminUsers,
   platformAdminAuditLog,
   organizations,
   users,
@@ -31,7 +31,7 @@ export interface PlatformAdminStorage {
   deletePlatformAdmin(id: string): Promise<boolean>;
   updatePlatformAdminLoginAttempts(id: string, attempts: number, lockedUntil?: Date): Promise<void>;
   updatePlatformAdminLastLogin(id: string): Promise<void>;
-  
+
   // Audit Log
   logPlatformAdminAction(data: InsertPlatformAdminAuditLog): Promise<PlatformAdminAuditLog>;
   getPlatformAdminAuditLogs(params: {
@@ -40,7 +40,7 @@ export interface PlatformAdminStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ logs: PlatformAdminAuditLog[]; total: number }>;
-  
+
   // Organization Management (cross-tenant)
   getAllOrganizations(params: {
     status?: string;
@@ -53,7 +53,7 @@ export interface PlatformAdminStorage {
   suspendOrganization(id: string, reason: string): Promise<void>;
   unsuspendOrganization(id: string): Promise<void>;
   deleteOrganization(id: string): Promise<void>;
-  
+
   // User Management (cross-tenant)
   getAllUsers(params: {
     organizationId?: string;
@@ -65,7 +65,7 @@ export interface PlatformAdminStorage {
   }): Promise<{ users: any[]; total: number }>;
   lockUser(id: string, reason: string): Promise<void>;
   unlockUser(id: string): Promise<void>;
-  
+
   // Subscription Management
   updateSubscriptionAsAdmin(organizationId: string, data: {
     planName?: string;
@@ -77,7 +77,7 @@ export interface PlatformAdminStorage {
     notes?: string;
   }, adminId: string): Promise<any>;
   getExpiringSubscriptions(daysAhead: number): Promise<any[]>;
-  
+
   // Dashboard Stats
   getPlatformStats(): Promise<{
     totalOrganizations: number;
@@ -87,7 +87,7 @@ export interface PlatformAdminStorage {
     expiringWithin14Days: number;
     expiringWithin30Days: number;
   }>;
-  
+
   // Subscription Plans Management
   getAllSubscriptionPlans(): Promise<SubscriptionPlanConfig[]>;
   getSubscriptionPlanBySlug(slug: string): Promise<SubscriptionPlanConfig | null>;
@@ -95,7 +95,7 @@ export interface PlatformAdminStorage {
   createSubscriptionPlan(data: InsertSubscriptionPlanConfig): Promise<SubscriptionPlanConfig>;
   updateSubscriptionPlan(id: string, data: Partial<InsertSubscriptionPlanConfig>): Promise<SubscriptionPlanConfig | null>;
   deleteSubscriptionPlan(id: string): Promise<boolean>;
-  
+
   // Subscription Override Management
   updateSubscriptionOverrides(organizationId: string, overrides: {
     maxClientsOverride?: number | null;
@@ -104,7 +104,7 @@ export interface PlatformAdminStorage {
     maxSeatsOverride?: number | null;
     retentionDaysOverride?: number | null;
   }, adminId: string): Promise<any>;
-  
+
   // User Management - additional actions
   forceLogoutUser(id: string): Promise<void>;
   deleteUser(id: string): Promise<void>;
@@ -113,10 +113,13 @@ export interface PlatformAdminStorage {
 export const platformAdminStorage: PlatformAdminStorage = {
   async createPlatformAdmin(data: InsertPlatformAdminUser): Promise<PlatformAdminUser> {
     const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-    const [admin] = await db.insert(platformAdminUsers).values({
+    const newId = crypto.randomUUID();
+    await db.insert(platformAdminUsers).values({
       ...data,
+      id: newId,
       password: hashedPassword,
-    }).returning();
+    });
+    const [admin] = await db.select().from(platformAdminUsers).where(eq(platformAdminUsers.id, newId));
     return admin;
   },
 
@@ -141,10 +144,10 @@ export const platformAdminStorage: PlatformAdminStorage = {
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
     }
-    const [admin] = await db.update(platformAdminUsers)
+    await db.update(platformAdminUsers)
       .set(updateData)
-      .where(eq(platformAdminUsers.id, id))
-      .returning();
+      .where(eq(platformAdminUsers.id, id));
+    const [admin] = await db.select().from(platformAdminUsers).where(eq(platformAdminUsers.id, id));
     return admin || null;
   },
 
@@ -166,7 +169,10 @@ export const platformAdminStorage: PlatformAdminStorage = {
   },
 
   async logPlatformAdminAction(data: InsertPlatformAdminAuditLog): Promise<PlatformAdminAuditLog> {
-    const [log] = await db.insert(platformAdminAuditLog).values(data).returning();
+    const newId = crypto.randomUUID();
+    const newLog = { ...data, id: newId };
+    await db.insert(platformAdminAuditLog).values(newLog);
+    const [log] = await db.select().from(platformAdminAuditLog).where(eq(platformAdminAuditLog.id, newId));
     return log;
   },
 
@@ -184,7 +190,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
 
     const [countResult] = await db.select({ count: count() }).from(platformAdminAuditLog)
       .where(whereClause);
-    
+
     const logs = await db.select().from(platformAdminAuditLog)
       .where(whereClause)
       .orderBy(desc(platformAdminAuditLog.createdAt))
@@ -202,7 +208,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
     offset?: number;
   }): Promise<{ organizations: any[]; total: number }> {
     const conditions = [];
-    
+
     if (params.search) {
       conditions.push(or(
         ilike(organizations.name, `%${params.search}%`),
@@ -235,7 +241,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
       const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, org.id));
       const [clientCount] = await db.select({ count: count() }).from(clients).where(eq(clients.organizationId, org.id));
       const [userCount] = await db.select({ count: count() }).from(users).where(eq(users.organizationId, org.id));
-      
+
       return {
         ...org,
         subscription: sub || null,
@@ -308,7 +314,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
     offset?: number;
   }): Promise<{ users: any[]; total: number }> {
     const conditions = [];
-    
+
     if (params.organizationId) conditions.push(eq(users.organizationId, params.organizationId));
     if (params.role) conditions.push(eq(users.role, params.role));
     if (params.status) conditions.push(eq(users.status, params.status));
@@ -375,7 +381,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
     notes?: string;
   }, adminId: string): Promise<any> {
     const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, organizationId));
-    
+
     const updateData: any = { updatedAt: new Date(), updatedBy: adminId };
     if (data.planName !== undefined) updateData.planName = data.planName;
     if (data.billingPeriod !== undefined) updateData.billingPeriod = data.billingPeriod;
@@ -386,13 +392,15 @@ export const platformAdminStorage: PlatformAdminStorage = {
     if (data.notes !== undefined) updateData.notes = data.notes;
 
     if (existing) {
-      const [updated] = await db.update(subscriptions)
+      await db.update(subscriptions)
         .set(updateData)
-        .where(eq(subscriptions.organizationId, organizationId))
-        .returning();
+        .where(eq(subscriptions.organizationId, organizationId));
+      const [updated] = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, organizationId));
       return { before: existing, after: updated };
     } else {
-      const [created] = await db.insert(subscriptions).values({
+      const newId = crypto.randomUUID();
+      await db.insert(subscriptions).values({
+        id: newId,
         organizationId,
         planName: data.planName || 'starter',
         billingPeriod: data.billingPeriod || 'monthly',
@@ -402,7 +410,8 @@ export const platformAdminStorage: PlatformAdminStorage = {
         provider: data.provider || 'manual',
         notes: data.notes,
         updatedBy: adminId,
-      }).returning();
+      });
+      const [created] = await db.select().from(subscriptions).where(eq(subscriptions.id, newId));
       return { before: null, after: created };
     }
   },
@@ -410,7 +419,7 @@ export const platformAdminStorage: PlatformAdminStorage = {
   async getExpiringSubscriptions(daysAhead: number): Promise<any[]> {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
-    
+
     const subs = await db.select({
       id: subscriptions.id,
       organizationId: subscriptions.organizationId,
@@ -442,10 +451,10 @@ export const platformAdminStorage: PlatformAdminStorage = {
     expiringWithin30Days: number;
   }> {
     const [orgCount] = await db.select({ count: count() }).from(organizations);
-    
+
     const [activeCount] = await db.select({ count: count() }).from(subscriptions)
       .where(eq(subscriptions.status, 'active'));
-    
+
     const [inactiveCount] = await db.select({ count: count() }).from(subscriptions)
       .where(or(
         eq(subscriptions.status, 'inactive'),
@@ -532,8 +541,8 @@ export const platformAdminStorage: PlatformAdminStorage = {
     // Force logout by updating the user record (triggers session invalidation on next request)
     // The actual session cleanup happens via the session store middleware
     await db.update(users)
-      .set({ 
-        updatedAt: new Date() 
+      .set({
+        updatedAt: new Date()
       })
       .where(eq(users.id, id));
   },

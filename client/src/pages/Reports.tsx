@@ -70,7 +70,7 @@ const SECTIONS: { existing: SectionDef[]; new: SectionDef[] } = {
 
 const QUICK_TEMPLATES = {
   "daily-flash": {
-    sections: ["executive-summary", "metrics-dashboard", "sales-by-department", "payment-methods", "payment-matrix", "declared-vs-system", "department-comparison", "stock-report", "stock-movements", "exception-log"],
+    sections: ["executive-summary", "metrics-dashboard", "sales-revenue", "sales-by-department", "payment-methods", "payment-matrix", "declared-vs-system", "department-comparison", "stock-report", "stock-movements", "exception-log"],
   },
   "weekly-variance": {
     sections: ["executive-summary", "metrics-dashboard", "daily-breakdown", "sales-by-department", "payment-methods", "payment-matrix", "declared-vs-system", "department-comparison", "stock-report", "stock-movements", "exception-log"],
@@ -97,12 +97,12 @@ export default function Reports() {
   const clientId = selectedClientId || clients?.[0]?.id || "";
   const selectedClient = clients?.find(c => c.id === clientId);
   const { checkAndShowLocked, entitlements, showLockedModal } = useEntitlements();
-  
+
   const isSectionLocked = (section: SectionDef): boolean => {
     if (!section.lockedBy || !entitlements) return false;
     return !(entitlements as any)[section.lockedBy];
   };
-  
+
   const handleSectionClick = (section: SectionDef) => {
     if (isSectionLocked(section)) {
       showLockedModal(section.label, section.requiredPlan || "Growth", `${section.label} is available on ${section.requiredPlan || "Growth"} plans and above.`);
@@ -123,9 +123,9 @@ export default function Reports() {
       case "month":
         return { start: startOfMonth(today), end: endOfMonth(today) };
       case "custom":
-        return { 
-          start: customStartDate ? new Date(customStartDate) : today, 
-          end: customEndDate ? new Date(customEndDate) : today 
+        return {
+          start: customStartDate ? new Date(customStartDate) : today,
+          end: customEndDate ? new Date(customEndDate) : today
         };
       default:
         return { start: today, end: today };
@@ -235,13 +235,14 @@ export default function Reports() {
 
   // Audit logs for Audit Trail Evidence section
   const { data: auditLogsData, isLoading: auditLogsLoading } = useQuery({
-    queryKey: ["audit-logs-report", getDateRange().start.toISOString(), getDateRange().end.toISOString()],
+    queryKey: ["audit-logs-report", format(getDateRange().start, "yyyy-MM-dd"), format(getDateRange().end, "yyyy-MM-dd")],
     queryFn: () => {
       const { start, end } = getDateRange();
       return auditLogsApi.getAll({
         startDate: format(start, "yyyy-MM-dd"),
         endDate: format(end, "yyyy-MM-dd"),
         limit: 500,
+        skipTotal: true,
       });
     },
     enabled: isLoadingData,
@@ -274,6 +275,32 @@ export default function Reports() {
   });
 
   const dataLoaded = !salesLoading && !exceptionsLoading && !stockLoading && !deptCompLoading && !purchasesLoading && !grnLoading && !receivablesLoading && !surplusLoading && !declarationsLoading && !auditLogsLoading && !invDeptsLoading && !srdStockLoading && allSalesData !== undefined;
+
+  const [pendingQueries, setPendingQueries] = useState<string[]>([]);
+
+  // DEBUG: Monitor loading states
+  useEffect(() => {
+    if (isLoadingData && !dataLoaded) {
+      const pending = [];
+      if (salesLoading) pending.push("Sales");
+      if (exceptionsLoading) pending.push("Exceptions");
+      if (stockLoading) pending.push("Stock Mvmt");
+      if (deptCompLoading) pending.push("Dept Comp");
+      if (purchasesLoading) pending.push("Purchases");
+      if (grnLoading) pending.push("GRN");
+      if (receivablesLoading) pending.push("Receivables");
+      if (surplusLoading) pending.push("Surplus");
+      if (declarationsLoading) pending.push("Declarations");
+      if (auditLogsLoading) pending.push("Audit Logs");
+      if (invDeptsLoading) pending.push("Inv Depts");
+      if (srdStockLoading) pending.push("SRD Stock");
+      if (allSalesData === undefined) pending.push("Sales Data Missing");
+
+      setPendingQueries(pending);
+    } else {
+      setPendingQueries([]);
+    }
+  }, [isLoadingData, dataLoaded, salesLoading, exceptionsLoading, stockLoading, deptCompLoading, purchasesLoading, grnLoading, receivablesLoading, surplusLoading, declarationsLoading, auditLogsLoading, invDeptsLoading, srdStockLoading, allSalesData]);
 
   const getFilteredSalesData = () => {
     if (!allSalesData) return [];
@@ -339,15 +366,22 @@ export default function Reports() {
 
   useEffect(() => {
     if (isLoadingData && dataLoaded) {
-      buildReportData();
-      setIsLoadingData(false);
-      setPreviewOpen(true);
+      console.log("Generating report preview...", { reportType, dateRange });
+      try {
+        buildReportData();
+        setPreviewOpen(true);
+      } catch (error: any) {
+        console.error("Report Generation Failed:", error);
+        toast.error(`Report generation failed: ${error.message}`);
+      } finally {
+        setIsLoadingData(false);
+      }
     }
   }, [isLoadingData, dataLoaded, allSalesData, exceptionsData, stockMovementsData, departmentComparisonData, purchaseEventsData, grnData, receivablesData, surplusData, paymentDeclarationsData, auditLogsData]);
 
   const toggleSection = (sectionId: string) => {
-    setSelectedSections(prev => 
-      prev.includes(sectionId) 
+    setSelectedSections(prev =>
+      prev.includes(sectionId)
         ? prev.filter(s => s !== sectionId)
         : [...prev, sectionId]
     );
@@ -359,7 +393,7 @@ export default function Reports() {
       setSelectedSections(template.sections);
       if (templateKey === "daily-flash") {
         setReportType("daily");
-        setDateRange("today");
+        setDateRange("yesterday");
       } else if (templateKey === "weekly-variance") {
         setReportType("weekly");
         setDateRange("week");
@@ -368,6 +402,9 @@ export default function Reports() {
         setDateRange("month");
       }
       toast.success(`Applied "${templateKey.replace(/-/g, " ")}" template`);
+
+      // Auto-generate preview
+      setIsLoadingData(true);
     }
   };
 
@@ -393,7 +430,7 @@ export default function Reports() {
     const exceptionsInvestigating = activeExceptions.filter((e: ExceptionType) => e.status === "investigating").length;
     const exceptionsResolved = activeExceptions.filter((e: ExceptionType) => e.status === "resolved").length;
     const exceptionsClosed = activeExceptions.filter((e: ExceptionType) => e.status === "closed").length;
-    
+
     const outcomeTrue = activeExceptions.filter((e: ExceptionType) => e.outcome === "true").length;
     const outcomeFalse = activeExceptions.filter((e: ExceptionType) => e.outcome === "false").length;
     const outcomeMismatched = activeExceptions.filter((e: ExceptionType) => e.outcome === "mismatched").length;
@@ -441,7 +478,7 @@ export default function Reports() {
   const getSalesByDepartment = () => {
     const sales: SalesEntry[] = getFilteredSalesData();
     const deptMap: Record<string, { sales: number; transactions: number }> = {};
-    
+
     sales.forEach((sale: SalesEntry) => {
       if (!deptMap[sale.departmentId]) {
         deptMap[sale.departmentId] = { sales: 0, transactions: 0 };
@@ -451,7 +488,7 @@ export default function Reports() {
     });
 
     const totalSales = Object.values(deptMap).reduce((s, d) => s + d.sales, 0);
-    
+
     return Object.entries(deptMap).map(([deptId, data]) => {
       const dept = departments?.find(d => d.id === deptId);
       return {
@@ -467,7 +504,7 @@ export default function Reports() {
   const getPaymentMethodsByDepartment = () => {
     const sales: SalesEntry[] = getFilteredSalesData();
     const deptMap: Record<string, { cash: number; pos: number; transfer: number; total: number }> = {};
-    
+
     sales.forEach((sale: SalesEntry) => {
       if (!deptMap[sale.departmentId]) {
         deptMap[sale.departmentId] = { cash: 0, pos: 0, transfer: 0, total: 0 };
@@ -494,7 +531,7 @@ export default function Reports() {
   const getDepartmentComparison = () => {
     const sales: SalesEntry[] = getFilteredSalesData();
     const deptMap: Record<string, { captured: number; cash: number; pos: number; transfer: number; declared: number }> = {};
-    
+
     sales.forEach((sale: SalesEntry) => {
       if (!deptMap[sale.departmentId]) {
         deptMap[sale.departmentId] = { captured: 0, cash: 0, pos: 0, transfer: 0, declared: 0 };
@@ -517,7 +554,7 @@ export default function Reports() {
       let status: "OK" | "Review" | "Critical" = "OK";
       if (Math.abs(variancePercent) > 5) status = "Critical";
       else if (Math.abs(variancePercent) > 2) status = "Review";
-      
+
       return {
         departmentId: deptId,
         departmentName: dept?.name || "Unknown",
@@ -538,13 +575,13 @@ export default function Reports() {
     const sales: SalesEntry[] = allSalesData || [];
     const movements: StockMovement[] = stockMovementsData || [];
     const exceptions: ExceptionType[] = exceptionsData?.filter((e: ExceptionType) => !e.deletedAt) || [];
-    
+
     const days = eachDayOfInterval({ start, end });
-    
+
     return days.map(day => {
       const dateStr = format(day, "yyyy-MM-dd");
       const daySales = sales.filter(s => format(new Date(s.date), "yyyy-MM-dd") === dateStr);
-      
+
       const capturedSales = daySales.reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
       const cash = daySales.reduce((sum, s) => sum + parseFloat(s.cashAmount || "0"), 0);
       const pos = daySales.reduce((sum, s) => sum + parseFloat(s.posAmount || "0"), 0);
@@ -553,16 +590,16 @@ export default function Reports() {
       // CORRECT: variance = declared - captured
       const variance = declared - capturedSales;
       const variancePercent = capturedSales > 0 ? (variance / capturedSales) * 100 : 0;
-      
+
       const dayMovements = movements.filter(m => m.createdAt && format(new Date(m.createdAt), "yyyy-MM-dd") === dateStr);
       const stockVariance = dayMovements.filter(m => m.movementType === "adjustment").reduce((sum, m) => sum + parseFloat(m.totalValue || "0"), 0);
-      
+
       const dayExceptions = exceptions.filter(e => e.createdAt && format(new Date(e.createdAt), "yyyy-MM-dd") === dateStr);
       const outcomeTrue = dayExceptions.filter(e => e.outcome === "true").length;
       const outcomeFalse = dayExceptions.filter(e => e.outcome === "false").length;
       const outcomeMismatched = dayExceptions.filter(e => e.outcome === "mismatched").length;
       const outcomePending = dayExceptions.filter(e => !e.outcome || e.outcome === "pending").length;
-      
+
       return {
         date: dateStr,
         displayDate: format(day, "EEE, MMM d"),
@@ -585,14 +622,14 @@ export default function Reports() {
 
   const getStockMovementsSummary = () => {
     const movements: StockMovement[] = stockMovementsData || [];
-    
+
     const summary: Record<string, { count: number; qtyTotal: number; valueTotal: number }> = {
       transfer: { count: 0, qtyTotal: 0, valueTotal: 0 },
       adjustment: { count: 0, qtyTotal: 0, valueTotal: 0 },
       waste: { count: 0, qtyTotal: 0, valueTotal: 0 },
       write_off: { count: 0, qtyTotal: 0, valueTotal: 0 },
     };
-    
+
     movements.forEach(m => {
       const type = m.movementType;
       if (summary[type]) {
@@ -601,7 +638,7 @@ export default function Reports() {
         summary[type].valueTotal += parseFloat(m.totalValue || "0");
       }
     });
-    
+
     return Object.entries(summary).map(([type, data]) => ({
       type,
       label: type.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
@@ -627,7 +664,7 @@ export default function Reports() {
   const getReportedPaymentsSummary = () => {
     const sales: SalesEntry[] = getFilteredSalesData();
     const declarations = paymentDeclarationsData || [];
-    
+
     // Group sales by department
     const entriesByDept: Record<string, SalesEntry[]> = {};
     sales.forEach(s => {
@@ -638,7 +675,7 @@ export default function Reports() {
     const results = (departments || []).map(dept => {
       const deptSales = entriesByDept[dept.id] || [];
       const totalCaptured = deptSales.reduce((sum, e) => sum + Number(e.totalSales || 0), 0);
-      
+
       const declaration = declarations.find(d => d.departmentId === dept.id);
       const hasDeclaration = !!declaration;
       const declaredCash = Number(declaration?.reportedCash || 0);
@@ -708,7 +745,7 @@ export default function Reports() {
     const mainStoreLedger = mainStoreSrds.map(srd => {
       const srdStock = stockData.filter(s => s.storeDepartmentId === srd.id);
       const srdName = names.find(n => n.id === srd.storeNameId);
-      
+
       const totals = srdStock.reduce((acc, stock) => {
         const item = items.find(i => i.id === stock.itemId);
         const costPrice = safeNumber(stock.costPriceSnapshot || item?.costPrice);
@@ -720,7 +757,7 @@ export default function Reports() {
         const isAwaitingCount = stock.physicalClosingQty === null;
         const physical = isAwaitingCount ? closing : safeNumber(stock.physicalClosingQty);
         const variance = isAwaitingCount ? 0 : physical - closing;
-        
+
         return {
           openingQty: acc.openingQty + opening,
           addedQty: acc.addedQty + added,
@@ -762,7 +799,7 @@ export default function Reports() {
     const departmentStoreLedger = departmentStoreSrds.map(srd => {
       const srdStock = stockData.filter(s => s.storeDepartmentId === srd.id);
       const srdName = names.find(n => n.id === srd.storeNameId);
-      
+
       const totals = srdStock.reduce((acc, stock) => {
         const item = items.find(i => i.id === stock.itemId);
         const costPrice = safeNumber(stock.costPriceSnapshot || item?.costPrice);
@@ -774,7 +811,7 @@ export default function Reports() {
         const isAwaitingCount = stock.physicalClosingQty === null;
         const physical = isAwaitingCount ? closing : safeNumber(stock.physicalClosingQty);
         const variance = isAwaitingCount ? 0 : physical - closing;
-        
+
         return {
           openingQty: acc.openingQty + opening,
           addedQty: acc.addedQty + added,
@@ -845,7 +882,7 @@ export default function Reports() {
     const dailyBreakdown = getDailyBreakdown();
     const stockMovementsSummary = getStockMovementsSummary();
     const { start, end } = getDateRange();
-    
+
     const topVarianceDrivers: string[] = [];
     const sortedDepts = [...deptComparison].sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance));
     sortedDepts.slice(0, 3).forEach(d => {
@@ -901,14 +938,14 @@ export default function Reports() {
         finalVariance: (departmentComparisonData || []).reduce((s, x) => s + x.finalVariance, 0),
       },
     }));
-    
+
     // Sales & Revenue section data (matches Audit Workspace exactly)
     const dailySummary = getDailySummary();
     const reportedPayments = getReportedPaymentsSummary();
-    
+
     // Audit Trail Evidence
     const auditTrailEvidence = getAuditTrailEvidence();
-    
+
     // SRD Ledger Summary (matches Inventory Ledger page)
     const srdLedgerSummary = getSrdLedgerSummary();
 
@@ -917,8 +954,8 @@ export default function Reports() {
       period: {
         start: format(start, "yyyy-MM-dd"),
         end: format(end, "yyyy-MM-dd"),
-        label: dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" : 
-               dateRange === "week" ? "This Week" : dateRange === "month" ? "This Month" : "Custom Range",
+        label: dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" :
+          dateRange === "week" ? "This Week" : dateRange === "month" ? "This Month" : "Custom Range",
       },
       client: selectedClient?.name || "Unknown Client",
       generatedAt: new Date().toISOString(),
@@ -975,16 +1012,16 @@ export default function Reports() {
       toast.error("Generate a preview first");
       return;
     }
-    
+
     const { metrics, departmentComparison, dailyBreakdown, exceptions, stockMovementsSummary } = reportData;
     let csvContent = "";
-    
+
     csvContent += "=== AUDIT REPORT ===\n";
     csvContent += `Client,${reportData.client}\n`;
     csvContent += `Period,${reportData.period.label} (${reportData.period.start} to ${reportData.period.end})\n`;
     csvContent += `Generated,${format(new Date(reportData.generatedAt), "MMM d, yyyy HH:mm")}\n`;
     csvContent += `Prepared By,${reportData.preparedBy}\n\n`;
-    
+
     csvContent += "=== SUMMARY METRICS ===\n";
     csvContent += "Metric,Value\n";
     csvContent += `Total Captured Sales,${formatMoney(metrics.totalCapturedSales)}\n`;
@@ -998,7 +1035,7 @@ export default function Reports() {
     csvContent += `Waste + Write-off,${formatMoney(metrics.wasteTotal + metrics.writeOffTotal)}\n`;
     csvContent += `Compliance Score,${metrics.complianceScore.toFixed(0)} (${metrics.complianceBand})\n`;
     csvContent += `Exceptions (Open/Investigating/Resolved/Closed),${metrics.exceptionsOpen}/${metrics.exceptionsInvestigating}/${metrics.exceptionsResolved}/${metrics.exceptionsClosed}\n\n`;
-    
+
     if (selectedSections.includes("department-comparison")) {
       csvContent += "=== DEPARTMENT COMPARISON (2ND HIT) ===\n";
       csvContent += "Department,Captured Sales,Declared Sales,Variance,Variance %,Cash,POS,Transfer,Status\n";
@@ -1007,7 +1044,7 @@ export default function Reports() {
       });
       csvContent += "\n";
     }
-    
+
     if (selectedSections.includes("daily-breakdown") && dailyBreakdown?.length > 0) {
       csvContent += "=== DAILY BREAKDOWN ===\n";
       csvContent += "Date,Captured Sales,Declared,Variance,Variance %,POS,Transfer,Cash,Stock Variance,Exceptions,TRUE,FALSE,MISMATCHED,PENDING\n";
@@ -1016,7 +1053,7 @@ export default function Reports() {
       });
       csvContent += "\n";
     }
-    
+
     if (selectedSections.includes("exception-log")) {
       csvContent += "=== EXCEPTIONS LOG ===\n";
       csvContent += "Case #,Department,Summary,Severity,Status,Outcome,Created,Last Updated\n";
@@ -1025,7 +1062,7 @@ export default function Reports() {
         csvContent += `"${e.caseNumber}","${dept?.name || ""}","${e.summary}","${e.severity || ""}","${e.status || ""}","${(e.outcome || "PENDING").toUpperCase()}","${e.createdAt ? format(new Date(e.createdAt), "yyyy-MM-dd HH:mm") : ""}","${e.updatedAt ? format(new Date(e.updatedAt), "yyyy-MM-dd HH:mm") : ""}"\n`;
       });
     }
-    
+
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1105,7 +1142,7 @@ export default function Reports() {
                   <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Core Sections</div>
                   <div className="grid grid-cols-2 gap-3">
                     {SECTIONS.existing.map(section => (
-                      <div 
+                      <div
                         key={section.id}
                         className={cn(
                           "flex items-center space-x-2 border p-3 rounded hover:bg-muted/50 transition-colors cursor-pointer",
@@ -1113,8 +1150,8 @@ export default function Reports() {
                         )}
                         onClick={() => toggleSection(section.id)}
                       >
-                        <Checkbox 
-                          id={`sec-${section.id}`} 
+                        <Checkbox
+                          id={`sec-${section.id}`}
                           checked={selectedSections.includes(section.id)}
                           onCheckedChange={() => toggleSection(section.id)}
                           data-testid={`checkbox-${section.id}`}
@@ -1131,12 +1168,12 @@ export default function Reports() {
                     {SECTIONS.new.map(section => {
                       const locked = isSectionLocked(section);
                       return (
-                        <div 
+                        <div
                           key={section.id}
                           className={cn(
                             "flex items-center space-x-2 border p-3 rounded transition-colors cursor-pointer",
-                            locked 
-                              ? "opacity-60 bg-muted/30 border-dashed" 
+                            locked
+                              ? "opacity-60 bg-muted/30 border-dashed"
                               : "hover:bg-muted/50",
                             selectedSections.includes(section.id) && !locked && "bg-primary/5 border-primary/30"
                           )}
@@ -1145,8 +1182,8 @@ export default function Reports() {
                           {locked ? (
                             <Lock className="h-4 w-4 text-amber-500 flex-shrink-0" />
                           ) : (
-                            <Checkbox 
-                              id={`sec-${section.id}`} 
+                            <Checkbox
+                              id={`sec-${section.id}`}
                               checked={selectedSections.includes(section.id)}
                               onCheckedChange={() => handleSectionClick(section)}
                               data-testid={`checkbox-${section.id}`}
@@ -1166,7 +1203,7 @@ export default function Reports() {
               </div>
 
               <div className="pt-4 flex gap-4 flex-wrap">
-                <Button 
+                <Button
                   className="gap-2"
                   onClick={handleGeneratePreview}
                   disabled={isLoadingData}
@@ -1175,8 +1212,17 @@ export default function Reports() {
                   {isLoadingData ? <Spinner className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   {isLoadingData ? "Loading Data..." : "Preview & Generate PDF"}
                 </Button>
-                <Button 
-                  variant="outline" 
+                {/* DEBUG: Show pending queries visually */}
+                {pendingQueries.length > 0 && (
+                  <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-800 font-mono">
+                    <strong>Waiting for data sources:</strong>
+                    <ul className="list-disc pl-4 mt-1">
+                      {pendingQueries.map(q => <li key={q}>{q}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
                   className="gap-2"
                   onClick={exportExcel}
                   data-testid="button-generate-excel"
@@ -1196,9 +1242,9 @@ export default function Reports() {
                 { title: "Weekly Pack", icon: PieChart, desc: "Daily breakdown + weekly totals", key: "weekly-variance" },
                 { title: "Month End Pack", icon: TableIcon, desc: "Comprehensive monthly analysis", key: "month-end-pack" },
               ].map((template) => (
-                <Card 
-                  key={template.key} 
-                  className="hover:shadow-md transition-shadow cursor-pointer group" 
+                <Card
+                  key={template.key}
+                  className="hover:shadow-md transition-shadow cursor-pointer group"
                   onClick={() => applyTemplate(template.key)}
                   data-testid={`template-${template.key}`}
                 >
@@ -1229,9 +1275,9 @@ export default function Reports() {
                 { title: "Weekly Pack", icon: PieChart, key: "weekly-variance" },
                 { title: "Month End Pack", icon: TableIcon, key: "month-end-pack" },
               ].map((t) => (
-                <Button 
-                  key={t.key} 
-                  variant="ghost" 
+                <Button
+                  key={t.key}
+                  variant="ghost"
                   className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-sidebar-foreground/80"
                   onClick={() => applyTemplate(t.key)}
                   data-testid={`quick-template-${t.key}`}
@@ -1318,8 +1364,8 @@ export default function Reports() {
                           <span className="font-semibold">Compliance Score:</span>
                           <Badge variant={
                             reportData.metrics.complianceBand === "Excellent" ? "default" :
-                            reportData.metrics.complianceBand === "Good" ? "secondary" :
-                            reportData.metrics.complianceBand === "Needs Review" ? "outline" : "destructive"
+                              reportData.metrics.complianceBand === "Good" ? "secondary" :
+                                reportData.metrics.complianceBand === "Needs Review" ? "outline" : "destructive"
                           }>
                             {reportData.metrics.complianceScore.toFixed(0)} - {reportData.metrics.complianceBand}
                           </Badge>
@@ -1333,61 +1379,61 @@ export default function Reports() {
                     <div>
                       <h3 className="font-bold text-lg mb-4">Metrics Dashboard (KPIs)</h3>
                       <div className="grid grid-cols-4 gap-4">
-                        <MetricCard 
-                          label="Total Captured Sales" 
-                          value={formatMoney(reportData.metrics.totalCapturedSales)} 
+                        <MetricCard
+                          label="Total Captured Sales"
+                          value={formatMoney(reportData.metrics.totalCapturedSales)}
                           icon={<DollarSign className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Total Declared" 
-                          value={formatMoney(reportData.metrics.totalDeclared)} 
+                        <MetricCard
+                          label="Total Declared"
+                          value={formatMoney(reportData.metrics.totalDeclared)}
                           icon={<DollarSign className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Variance" 
-                          value={formatMoney(reportData.metrics.variance)} 
+                        <MetricCard
+                          label="Variance"
+                          value={formatMoney(reportData.metrics.variance)}
                           subValue={`${reportData.metrics.variancePercent.toFixed(2)}%`}
                           icon={reportData.metrics.variance >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                           variant={Math.abs(reportData.metrics.variancePercent) > 5 ? "critical" : Math.abs(reportData.metrics.variancePercent) > 2 ? "warning" : "success"}
                         />
-                        <MetricCard 
-                          label="Compliance Score" 
-                          value={`${reportData.metrics.complianceScore.toFixed(0)}/100`} 
+                        <MetricCard
+                          label="Compliance Score"
+                          value={`${reportData.metrics.complianceScore.toFixed(0)}/100`}
                           subValue={reportData.metrics.complianceBand}
                           icon={<Award className="h-4 w-4" />}
                           variant={reportData.metrics.complianceBand === "Excellent" ? "success" : reportData.metrics.complianceBand === "Good" ? "default" : reportData.metrics.complianceBand === "Needs Review" ? "warning" : "critical"}
                         />
                       </div>
                       <div className="grid grid-cols-4 gap-4 mt-4">
-                        <MetricCard 
-                          label="POS" 
-                          value={formatMoney(reportData.metrics.totalPos)} 
+                        <MetricCard
+                          label="POS"
+                          value={formatMoney(reportData.metrics.totalPos)}
                           icon={<DollarSign className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Transfer" 
-                          value={formatMoney(reportData.metrics.totalTransfer)} 
+                        <MetricCard
+                          label="Transfer"
+                          value={formatMoney(reportData.metrics.totalTransfer)}
                           icon={<DollarSign className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Cash" 
-                          value={formatMoney(reportData.metrics.totalCash)} 
+                        <MetricCard
+                          label="Cash"
+                          value={formatMoney(reportData.metrics.totalCash)}
                           icon={<DollarSign className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Stock Variance" 
-                          value={formatMoney(reportData.metrics.stockVariance)} 
+                        <MetricCard
+                          label="Stock Variance"
+                          value={formatMoney(reportData.metrics.stockVariance)}
                           icon={<Package className="h-4 w-4" />}
                         />
                       </div>
                       <div className="grid grid-cols-4 gap-4 mt-4">
-                        <MetricCard 
-                          label="Waste + Write-off" 
-                          value={formatMoney(reportData.metrics.wasteTotal + reportData.metrics.writeOffTotal)} 
+                        <MetricCard
+                          label="Waste + Write-off"
+                          value={formatMoney(reportData.metrics.wasteTotal + reportData.metrics.writeOffTotal)}
                           icon={<AlertTriangle className="h-4 w-4" />}
                         />
-                        <MetricCard 
-                          label="Exceptions" 
+                        <MetricCard
+                          label="Exceptions"
                           value={`${reportData.metrics.exceptionsTotal} total`}
                           subValue={`Open: ${reportData.metrics.exceptionsOpen} | Investigating: ${reportData.metrics.exceptionsInvestigating} | Resolved: ${reportData.metrics.exceptionsResolved} | Closed: ${reportData.metrics.exceptionsClosed}`}
                           icon={<AlertCircle className="h-4 w-4" />}
@@ -1409,7 +1455,7 @@ export default function Reports() {
                   {selectedSections.includes("sales-revenue") && reportData.dailySummary && (
                     <div className="page-break-before space-y-6">
                       <h3 className="font-bold text-lg">Sales & Revenue</h3>
-                      
+
                       {/* Variance Statement KPI Block */}
                       <div className="grid grid-cols-3 gap-4">
                         <div className="border rounded-lg p-4 bg-emerald-50">
@@ -1422,14 +1468,14 @@ export default function Reports() {
                         </div>
                         <div className={cn(
                           "border rounded-lg p-4",
-                          (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) === 0 ? "bg-green-50" : 
-                          (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) < 0 ? "bg-red-50" : "bg-amber-50"
+                          (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) === 0 ? "bg-green-50" :
+                            (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) < 0 ? "bg-red-50" : "bg-amber-50"
                         )}>
                           <div className="text-xs text-muted-foreground mb-1">First Hit Variance (Declared - Captured)</div>
                           <div className={cn(
                             "text-xl font-bold font-mono",
-                            (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) === 0 ? "text-green-700" : 
-                            (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) < 0 ? "text-red-700" : "text-amber-700"
+                            (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) === 0 ? "text-green-700" :
+                              (reportData.reportedPayments?.totals?.firstHitVariance ?? 0) < 0 ? "text-red-700" : "text-amber-700"
                           )}>
                             {(reportData.reportedPayments?.totals?.firstHitVariance ?? 0) > 0 ? "+" : ""}{formatMoney(reportData.reportedPayments?.totals?.firstHitVariance ?? 0)}
                           </div>
@@ -1501,9 +1547,9 @@ export default function Reports() {
                                       "text-right font-mono font-medium",
                                       !r.hasDeclaration ? "text-amber-600" : r.variance === 0 ? "text-emerald-600" : r.variance < 0 ? "text-red-600" : "text-amber-600"
                                     )}>
-                                      {!r.hasDeclaration 
+                                      {!r.hasDeclaration
                                         ? <span className="text-amber-600">-{formatMoney(r.totalCaptured)}</span>
-                                        : r.variance === 0 
+                                        : r.variance === 0
                                           ? formatMoney(0)
                                           : `${r.variance > 0 ? "+" : ""}${formatMoney(r.variance)}`}
                                     </TableCell>
@@ -1539,8 +1585,8 @@ export default function Reports() {
                                 <TableCell className="text-right font-mono">{formatMoney(reportData.reportedPayments.totals.totalDeclared)}</TableCell>
                                 <TableCell className={cn(
                                   "text-right font-mono",
-                                  reportData.reportedPayments.totals.firstHitVariance === 0 ? "text-emerald-600" : 
-                                  reportData.reportedPayments.totals.firstHitVariance < 0 ? "text-red-600" : "text-amber-600"
+                                  reportData.reportedPayments.totals.firstHitVariance === 0 ? "text-emerald-600" :
+                                    reportData.reportedPayments.totals.firstHitVariance < 0 ? "text-red-600" : "text-amber-600"
                                 )}>
                                   {reportData.reportedPayments.totals.firstHitVariance > 0 ? "+" : ""}{formatMoney(reportData.reportedPayments.totals.firstHitVariance)}
                                 </TableCell>
@@ -1874,9 +1920,9 @@ export default function Reports() {
                                 <TableCell className="capitalize">{e.status}</TableCell>
                                 <TableCell>
                                   <Badge variant={
-                                    e.outcome === "true" ? "default" : 
-                                    e.outcome === "false" ? "destructive" : 
-                                    e.outcome === "mismatched" ? "secondary" : "outline"
+                                    e.outcome === "true" ? "default" :
+                                      e.outcome === "false" ? "destructive" :
+                                        e.outcome === "mismatched" ? "secondary" : "outline"
                                   } className={e.outcome === "true" ? "bg-green-600" : ""}>
                                     {(e.outcome || "PENDING").toUpperCase()}
                                   </Badge>
@@ -2187,13 +2233,13 @@ export default function Reports() {
                             <div className={cn(
                               "text-center p-3 rounded border",
                               srd.varianceQty === 0 ? "bg-green-50 border-green-200" :
-                              srd.varianceQty < 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                                srd.varianceQty < 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
                             )}>
                               <div className="text-xs text-muted-foreground mb-1">Variance</div>
                               <div className={cn(
                                 "font-mono font-medium",
                                 srd.varianceQty === 0 ? "text-green-700" :
-                                srd.varianceQty < 0 ? "text-red-700" : "text-amber-700"
+                                  srd.varianceQty < 0 ? "text-red-700" : "text-amber-700"
                               )}>
                                 {srd.varianceValue > 0 ? "+" : ""}{formatMoney(srd.varianceValue)}
                               </div>
@@ -2247,13 +2293,13 @@ export default function Reports() {
                             <div className={cn(
                               "text-center p-3 rounded border",
                               srd.varianceQty === 0 ? "bg-green-50 border-green-200" :
-                              srd.varianceQty < 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                                srd.varianceQty < 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
                             )}>
                               <div className="text-xs text-muted-foreground mb-1">Variance</div>
                               <div className={cn(
                                 "font-mono font-medium",
                                 srd.varianceQty === 0 ? "text-green-700" :
-                                srd.varianceQty < 0 ? "text-red-700" : "text-amber-700"
+                                  srd.varianceQty < 0 ? "text-red-700" : "text-amber-700"
                               )}>
                                 {srd.varianceValue > 0 ? "+" : ""}{formatMoney(srd.varianceValue)}
                               </div>
@@ -2262,7 +2308,7 @@ export default function Reports() {
                           </div>
                         </div>
                       ))}
-                      
+
                       {/* Combined Department Stores Total */}
                       {reportData.srdLedgerSummary.combinedDeptTotals && (
                         <div className="border-t-2 border-purple-300 pt-4">
@@ -2292,13 +2338,13 @@ export default function Reports() {
                             <div className={cn(
                               "text-center p-3 rounded",
                               reportData.srdLedgerSummary.combinedDeptTotals.varianceValue === 0 ? "bg-green-100" :
-                              reportData.srdLedgerSummary.combinedDeptTotals.varianceValue < 0 ? "bg-red-100" : "bg-amber-100"
+                                reportData.srdLedgerSummary.combinedDeptTotals.varianceValue < 0 ? "bg-red-100" : "bg-amber-100"
                             )}>
                               <div className="text-xs text-muted-foreground mb-1">Total Variance</div>
                               <div className={cn(
                                 "font-mono font-bold",
                                 reportData.srdLedgerSummary.combinedDeptTotals.varianceValue === 0 ? "text-green-700" :
-                                reportData.srdLedgerSummary.combinedDeptTotals.varianceValue < 0 ? "text-red-700" : "text-amber-700"
+                                  reportData.srdLedgerSummary.combinedDeptTotals.varianceValue < 0 ? "text-red-700" : "text-amber-700"
                               )}>
                                 {reportData.srdLedgerSummary.combinedDeptTotals.varianceValue > 0 ? "+" : ""}{formatMoney(reportData.srdLedgerSummary.combinedDeptTotals.varianceValue)}
                               </div>
@@ -2387,7 +2433,7 @@ export default function Reports() {
                             <li>Waste and write-offs total: {formatMoney(reportData.metrics.wasteTotal + reportData.metrics.writeOffTotal)}</li>
                           )}
                         </ul>
-                        
+
                         <h4 className="font-semibold mb-2">Action Plan</h4>
                         <Table>
                           <TableHeader>
@@ -2461,17 +2507,17 @@ export default function Reports() {
   );
 }
 
-function MetricCard({ 
-  label, 
-  value, 
-  subValue, 
-  icon, 
-  variant = "default" 
-}: { 
-  label: string; 
-  value: string; 
+function MetricCard({
+  label,
+  value,
+  subValue,
+  icon,
+  variant = "default"
+}: {
+  label: string;
+  value: string;
   subValue?: string;
-  icon: React.ReactNode; 
+  icon: React.ReactNode;
   variant?: "default" | "success" | "warning" | "critical";
 }) {
   return (

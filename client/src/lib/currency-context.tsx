@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { organizationSettingsApi, OrganizationSettings } from "./api";
 import { toast } from "sonner";
+import { useAuth } from "./auth-context";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   NGN: "₦",
@@ -34,10 +35,13 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("currency") || "NGN";
   });
 
+  const { user } = useAuth();
+
   const { data: settings, isLoading } = useQuery({
     queryKey: ["organization-settings"],
     queryFn: organizationSettingsApi.get,
     staleTime: 1000 * 60 * 5,
+    enabled: !!user,
   });
 
   const updateMutation = useMutation({
