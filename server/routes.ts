@@ -33,6 +33,7 @@ import { backfillSrdLedger, backfillAllSrdsForClient, postMovementToLedgers, rec
 import { srdLedgerEngine } from "./srd-ledger-engine";
 import type { SrdMovementEventType } from "@shared/schema";
 import * as paystackService from "./paystack-service";
+import signature from "cookie-signature";
 
 declare module "express-session" {
   interface SessionData {
@@ -883,10 +884,12 @@ export async function registerRoutes(
         ipAddress: req.ip || "Unknown",
       });
 
-      // Extract the signed session ID from the Set-Cookie header for header-based auth
-      // This shim allows clients to send "Authorization: Bearer <token>" when cookies are blocked
-      const sessionTokenMatch = setCookieStr.match(/connect\.sid=([^;]+)/);
-      const sessionToken = sessionTokenMatch ? sessionTokenMatch[1] : null;
+      // Manually sign the session ID to ensure we send a valid token
+      // The Set-Cookie header might not be set yet on the response object
+      const sessionSecret = process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production";
+      const signedSessionId = "s:" + signature.sign(newSessionId, sessionSecret);
+
+      console.log(`[LOGIN] Generated manual session token: ${signedSessionId.substring(0, 15)}...`);
 
       // Send response ONLY after session is fully persisted
       res.json({
@@ -897,7 +900,7 @@ export async function registerRoutes(
         role: user.role,
         mustChangePassword: user.mustChangePassword,
         accessScope: user.accessScope,
-        sessionToken: sessionToken // SIGNED token for header-based auth
+        sessionToken: signedSessionId // Manually signed token
       });
     } catch (error: any) {
       const totalTime = Date.now() - loginStart;
