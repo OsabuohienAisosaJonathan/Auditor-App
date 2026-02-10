@@ -14,6 +14,7 @@ export interface User {
   phone?: string | null;
   mustChangePassword?: boolean;
   organizationId?: string | null;
+  sessionToken?: string;
 }
 
 export interface AdminActivityLog {
