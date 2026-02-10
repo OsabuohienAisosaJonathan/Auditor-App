@@ -188,64 +188,43 @@ export async function registerRoutes(
 
   let sessionStore: session.Store;
 
-  // FORCE MEMORY STORE for debugging 502 errors
-  // This rules out MySQL session store connection issues
-  sessionStore = new MemoryStoreFactory({
-    checkPeriod: 86400000, // Prune expired entries every 24h
-  });
-
-  console.log("[Session Store] FORCED: Using pure memory store (production debugging)");
-
-  /* 
   if (isProduction && process.env.DATABASE_URL) {
-    // Production: MySQL store
     console.log("[Session Store] Configuring MySQL session store...");
-    
-    // ... (MySQL store code commented out for stability test) ...
-    // ...
+    sessionStore = new MySQLSessionStore({
+      expiration: SESSION_ABSOLUTE_MAX_AGE,
+      createDatabaseTable: true,
+      schema: {
+        tableName: 'sessions',
+        columnNames: {
+          session_id: 'session_id',
+          expires: 'expires',
+          data: 'data'
+        }
+      }
+    }, pool as any);
   } else {
-    // Development: Pure memory store - no DB dependency for sessions
-    // Sessions won't persist across server restarts, but that's fine for dev
+    // Development: Pure memory store
     sessionStore = new MemoryStoreFactory({
-      checkPeriod: 86400000, // Prune expired entries every 24h
+      checkPeriod: 86400000,
     });
-
     console.log("[Session Store] Using pure memory store (development)");
   }
-  */
 
   // Background session pruning for production PostgreSQL - runs every 30 minutes
-  if (isProduction) {
-    const SESSION_PRUNE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
-    setInterval(async () => {
-      try {
-        console.log("[Session Prune] Starting background session cleanup...");
-        const startTime = Date.now();
-        const result = await pool.query(
-          `DELETE FROM session WHERE expire < NOW()`
-        );
-        const duration = Date.now() - startTime;
-        console.log(`[Session Prune] Cleaned up ${result.rowCount || 0} expired sessions in ${duration}ms`);
-      } catch (err: any) {
-        console.error("[Session Prune] Failed to prune sessions:", err.message);
-      }
-    }, SESSION_PRUNE_INTERVAL_MS);
-  }
+
 
   app.use(
     session({
       store: sessionStore,
       secret: process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production",
-      resave: true, // Allow resave for sliding sessions
+      resave: false, // FALSE is better for MySQLStore
       saveUninitialized: false,
-      proxy: true, // Always behind proxy on Replit
-      rolling: true, // Enable sliding sessions - extends expiry on each request
+      proxy: true, // Always behind proxy on Replit/Render
+      rolling: true, // Enable sliding sessions
       cookie: {
         httpOnly: true,
-        // FIXED: Always use secure cookies - Replit and Render use HTTPS
-        // The previous dynamic approach caused race conditions where cookies weren't sent back
-        secure: process.env.NODE_ENV === "production", // Only secure in production
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Lax for localhost
+        secure: isProduction, // CRITICAL: HTTPS for production
+        sameSite: isProduction ? "none" : "lax", // CRITICAL: none for cross-origin (Go54 -> Render)
         maxAge: SESSION_IDLE_MAX_AGE,
         domain: undefined,
         path: "/",
