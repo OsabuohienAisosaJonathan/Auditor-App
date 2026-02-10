@@ -223,6 +223,7 @@ export async function registerRoutes(
         // Inject the cookie header so express-session finds it
         // Note: The token from login response is already the signed value
         req.headers.cookie = `connect.sid=${token}`;
+        console.log(`[AUTH COMPAT] Injected cookie from Authorization header (sessionId prefix: ${token.substring(0, 8)}...)`);
       }
     }
     next();
@@ -234,15 +235,13 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production",
       resave: false, // FALSE is better for MySQLStore
       saveUninitialized: false,
-      proxy: true, // Always behind proxy on Replit/Render/Go54
+      proxy: true, // Always behind proxy on Replit/Render
       rolling: true, // Enable sliding sessions
       cookie: {
         httpOnly: true,
         secure: isProduction, // CRITICAL: HTTPS for production
-        // Go54/Render deployment is often same-domain or subdomain. 
-        // "Lax" is safer and sufficient for most cases. 
-        // "None" is only needed for cross-site (e.g. localhost frontend -> render backend)
-        sameSite: (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none") || (isProduction ? "lax" : "lax"),
+        // Cross-origin deployment (Frontend on Go54, Backend on Render) REQUIRES "none"
+        sameSite: (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none") || (isProduction ? "none" : "lax"),
         maxAge: SESSION_IDLE_MAX_AGE,
         domain: cookieDomain,
         path: "/",
