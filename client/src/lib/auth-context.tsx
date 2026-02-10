@@ -126,7 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // CRITICAL: Save session token if provided (header-based auth fallback)
       if (userData.sessionToken) {
+        console.log("[AuthContext] Received session token from login:", userData.sessionToken.substring(0, 8) + "...");
         setAuthToken(userData.sessionToken);
+        console.log("[AuthContext] Token saved to localStorage");
+      } else {
+        console.warn("[AuthContext] No session token received in login response!");
       }
 
       const duration = Date.now() - startTime;

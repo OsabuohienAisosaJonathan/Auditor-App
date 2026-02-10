@@ -216,15 +216,17 @@ export async function registerRoutes(
   // CRITICAL: Shim for header-based auth (when cross-origin cookies are blocked)
   // Maps "Authorization: Bearer <token>" to "cookie: connect.sid=<token>"
   app.use((req, res, next) => {
-    if (!req.headers.cookie && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        // Inject the cookie header so express-session finds it
-        // Note: The token from login response is already the signed value
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      // ALWAYS inject/override the cookie header if a token is provided
+      // This ensures we prefer the explicit token over any potentially invalid/blocked cookies
+      if (req.headers.cookie) {
+        req.headers.cookie += `; connect.sid=${token}`;
+      } else {
         req.headers.cookie = `connect.sid=${token}`;
-        console.log(`[AUTH COMPAT] Injected cookie from Authorization header (sessionId prefix: ${token.substring(0, 8)}...)`);
       }
+      console.log(`[AUTH COMPAT] Injected cookie from Authorization header (sessionId prefix: ${token.substring(0, 8)}...)`);
     }
     next();
   });
