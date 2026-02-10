@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import signature from "cookie-signature";
 
 declare module "express-session" {
   interface SessionData {
@@ -67,13 +68,13 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password required" });
       }
 
       const admin = await platformAdminStorage.getPlatformAdminByEmail(email.toLowerCase());
-      
+
       if (!admin) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -88,7 +89,7 @@ export function registerPlatformAdminRoutes(app: Express) {
       }
 
       const validPassword = await bcrypt.compare(password, admin.password);
-      
+
       if (!validPassword) {
         const attempts = (admin.loginAttempts || 0) + 1;
         const lockedUntil = attempts >= LOCKOUT_ATTEMPTS ? new Date(Date.now() + LOCKOUT_DURATION_MS) : undefined;
@@ -97,17 +98,24 @@ export function registerPlatformAdminRoutes(app: Express) {
       }
 
       await platformAdminStorage.updatePlatformAdminLastLogin(admin.id);
-      
+
       req.session.platformAdminId = admin.id;
       req.session.platformAdminRole = admin.role as PlatformAdminRole;
 
       await logAdminAction(admin.id, "login", "platform_admin", admin.id, null, null, null, req);
+
+      // CRITICAL: Manually sign session ID for cross-origin fallback
+      const sessionSecret = process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production";
+      // req.sessionID is available after session middleware runs
+      const signedSessionId = "s:" + signature.sign(req.sessionID, sessionSecret);
+      console.log(`[ADMIN LOGIN] Generated manual session token: ${signedSessionId.substring(0, 15)}...`);
 
       return res.json({
         id: admin.id,
         email: admin.email,
         name: admin.name,
         role: admin.role,
+        sessionToken: signedSessionId
       });
     } catch (error: any) {
       console.error("Platform admin login error:", error);
@@ -118,10 +126,10 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/auth/logout", requirePlatformAdmin, async (req, res) => {
     const adminId = req.session.platformAdminId!;
     await logAdminAction(adminId, "logout", "platform_admin", adminId, null, null, null, req);
-    
+
     req.session.platformAdminId = undefined;
     req.session.platformAdminRole = undefined;
-    
+
     return res.json({ message: "Logged out" });
   });
 
@@ -203,12 +211,12 @@ export function registerPlatformAdminRoutes(app: Express) {
     try {
       const { reason } = req.body;
       const orgBefore = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
-      
+
       await platformAdminStorage.suspendOrganization(req.params.id, reason || "Suspended by platform admin");
-      
+
       const orgAfter = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
       await logAdminAction(req.session.platformAdminId!, "suspend_org", "organization", req.params.id, orgBefore, orgAfter, reason, req);
-      
+
       return res.json({ message: "Organization suspended" });
     } catch (error: any) {
       console.error("Suspend organization error:", error);
@@ -219,12 +227,12 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/organizations/:id/unsuspend", requirePlatformAdminPermission("edit_billing"), async (req, res) => {
     try {
       const orgBefore = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
-      
+
       await platformAdminStorage.unsuspendOrganization(req.params.id);
-      
+
       const orgAfter = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
       await logAdminAction(req.session.platformAdminId!, "unsuspend_org", "organization", req.params.id, orgBefore, orgAfter, null, req);
-      
+
       return res.json({ message: "Organization unsuspended" });
     } catch (error: any) {
       console.error("Unsuspend organization error:", error);
@@ -236,14 +244,14 @@ export function registerPlatformAdminRoutes(app: Express) {
     if (req.session.platformAdminRole !== "platform_super_admin") {
       return res.status(403).json({ message: "Only Platform Super Admin can delete organizations" });
     }
-    
+
     try {
       const orgBefore = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
-      
+
       await platformAdminStorage.deleteOrganization(req.params.id);
-      
+
       await logAdminAction(req.session.platformAdminId!, "delete_org", "organization", req.params.id, orgBefore, null, null, req);
-      
+
       return res.json({ message: "Organization deleted" });
     } catch (error: any) {
       console.error("Delete organization error:", error);
@@ -277,15 +285,15 @@ export function registerPlatformAdminRoutes(app: Express) {
     try {
       const { reason } = req.body;
       const userBefore = await storage.getUser(req.params.id);
-      
+
       await platformAdminStorage.lockUser(req.params.id, reason || "Locked by platform admin");
-      
+
       const userAfter = await storage.getUser(req.params.id);
-      await logAdminAction(req.session.platformAdminId!, "lock_user", "user", req.params.id, 
-        { isLocked: userBefore?.status === 'inactive' }, 
-        { isLocked: true, reason }, 
+      await logAdminAction(req.session.platformAdminId!, "lock_user", "user", req.params.id,
+        { isLocked: userBefore?.status === 'inactive' },
+        { isLocked: true, reason },
         reason, req);
-      
+
       return res.json({ message: "User locked" });
     } catch (error: any) {
       console.error("Lock user error:", error);
@@ -296,14 +304,14 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/users/:id/unlock", requirePlatformAdminPermission("unlock_user"), async (req, res) => {
     try {
       const userBefore = await storage.getUser(req.params.id);
-      
+
       await platformAdminStorage.unlockUser(req.params.id);
-      
-      await logAdminAction(req.session.platformAdminId!, "unlock_user", "user", req.params.id, 
-        { isLocked: true }, 
-        { isLocked: false }, 
+
+      await logAdminAction(req.session.platformAdminId!, "unlock_user", "user", req.params.id,
+        { isLocked: true },
+        { isLocked: false },
         null, req);
-      
+
       return res.json({ message: "User unlocked" });
     } catch (error: any) {
       console.error("Unlock user error:", error);
@@ -317,16 +325,16 @@ export function registerPlatformAdminRoutes(app: Express) {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const token = crypto.randomBytes(32).toString("hex");
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      
+
       await db.update(users)
         .set({ verificationToken: token, verificationExpiry: expiry, updatedAt: new Date() })
         .where(eq(users.id, req.params.id));
-      
+
       await logAdminAction(req.session.platformAdminId!, "resend_verification", "user", req.params.id, null, null, null, req);
-      
+
       return res.json({ message: "Verification email resent" });
     } catch (error: any) {
       console.error("Resend verification error:", error);
@@ -340,16 +348,16 @@ export function registerPlatformAdminRoutes(app: Express) {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const token = crypto.randomBytes(32).toString("hex");
       const expiry = new Date(Date.now() + 60 * 60 * 1000);
-      
+
       await db.update(users)
         .set({ passwordResetToken: token, passwordResetExpiry: expiry, updatedAt: new Date() })
         .where(eq(users.id, req.params.id));
-      
+
       await logAdminAction(req.session.platformAdminId!, "send_password_reset", "user", req.params.id, null, null, null, req);
-      
+
       return res.json({ message: "Password reset email sent" });
     } catch (error: any) {
       console.error("Send password reset error:", error);
@@ -364,7 +372,7 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.patch("/api/owner/organizations/:id/subscription", requirePlatformAdminPermission("edit_billing"), async (req, res) => {
     try {
       const { planName, billingPeriod, status, expiresAt, nextBillingDate, provider, notes } = req.body;
-      
+
       if (planName && !SUBSCRIPTION_PLANS.includes(planName)) {
         return res.status(400).json({ message: "Invalid plan name" });
       }
@@ -398,7 +406,7 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/organizations/:id/grant-free-access", requirePlatformAdminPermission("grant_free_access"), async (req, res) => {
     try {
       const { planName, expiresAt, notes } = req.body;
-      
+
       if (!expiresAt) {
         return res.status(400).json({ message: "Expiry date is required for free access" });
       }
@@ -430,7 +438,7 @@ export function registerPlatformAdminRoutes(app: Express) {
   app.post("/api/owner/organizations/:id/extend-subscription", requirePlatformAdminPermission("extend_subscription"), async (req, res) => {
     try {
       const { days, newExpiresAt, notes } = req.body;
-      
+
       const org = await platformAdminStorage.getOrganizationWithDetails(req.params.id);
       if (!org) {
         return res.status(404).json({ message: "Organization not found" });
@@ -489,7 +497,7 @@ export function registerPlatformAdminRoutes(app: Express) {
     if (req.session.platformAdminRole !== "platform_super_admin") {
       return res.status(403).json({ message: "Only Platform Super Admin can view admin list" });
     }
-    
+
     try {
       const admins = await platformAdminStorage.getAllPlatformAdmins();
       return res.json(admins.map(a => ({
@@ -511,10 +519,10 @@ export function registerPlatformAdminRoutes(app: Express) {
     if (req.session.platformAdminRole !== "platform_super_admin") {
       return res.status(403).json({ message: "Only Platform Super Admin can create admins" });
     }
-    
+
     try {
       const { email, password, name, role } = req.body;
-      
+
       if (!email || !password || !name) {
         return res.status(400).json({ message: "Email, password, and name are required" });
       }
@@ -553,18 +561,18 @@ export function registerPlatformAdminRoutes(app: Express) {
     if (req.session.platformAdminRole !== "platform_super_admin") {
       return res.status(403).json({ message: "Only Platform Super Admin can delete admins" });
     }
-    
+
     if (req.params.id === req.session.platformAdminId) {
       return res.status(400).json({ message: "Cannot delete yourself" });
     }
-    
+
     try {
       const adminBefore = await platformAdminStorage.getPlatformAdminById(req.params.id);
-      
+
       await platformAdminStorage.deletePlatformAdmin(req.params.id);
-      
+
       await logAdminAction(req.session.platformAdminId!, "delete_admin", "platform_admin", req.params.id, adminBefore, null, null, req);
-      
+
       return res.json({ message: "Admin deleted" });
     } catch (error: any) {
       console.error("Delete admin error:", error);
@@ -577,30 +585,30 @@ export function registerPlatformAdminRoutes(app: Express) {
   // =====================================================
 
   app.post("/api/owner/bootstrap", async (req, res) => {
-    console.log("[BOOTSTRAP] Request received:", { 
-      email: req.body.email, 
+    console.log("[BOOTSTRAP] Request received:", {
+      email: req.body.email,
       hasPassword: !!req.body.password,
       hasBootstrapKey: !!req.body.bootstrapKey,
-      fullName: req.body.fullName 
+      fullName: req.body.fullName
     });
-    
+
     try {
       const admins = await platformAdminStorage.getAllPlatformAdmins();
       console.log("[BOOTSTRAP] Existing admins count:", admins.length);
-      
+
       if (admins.length > 0) {
         return res.status(403).json({ message: "Platform admin already exists. Use login." });
       }
 
       const { email, password, name, bootstrapKey, fullName } = req.body;
-      
+
       const expectedKey = process.env.ADMIN_BOOTSTRAP_KEY || "miauditops-platform-admin-setup";
       console.log("[BOOTSTRAP] Key check:", { provided: !!bootstrapKey, expected: !!expectedKey, match: bootstrapKey === expectedKey });
-      
+
       if (bootstrapKey !== expectedKey) {
         return res.status(403).json({ message: "Invalid bootstrap key" });
       }
-      
+
       const adminName = name || fullName;
 
       if (!email || !password || !adminName) {
@@ -705,7 +713,7 @@ export function registerPlatformAdminRoutes(app: Express) {
       if (!org) {
         return res.status(404).json({ message: "Organization not found" });
       }
-      
+
       const overridesBefore = org.subscription ? {
         maxClientsOverride: org.subscription.maxClientsOverride,
         maxSrdDepartmentsOverride: org.subscription.maxSrdDepartmentsOverride,
@@ -713,11 +721,11 @@ export function registerPlatformAdminRoutes(app: Express) {
         maxSeatsOverride: org.subscription.maxSeatsOverride,
         retentionDaysOverride: org.subscription.retentionDaysOverride,
       } : null;
-      
+
       const result = await platformAdminStorage.updateSubscriptionOverrides(req.params.id, req.body, req.session.platformAdminId!);
-      
+
       await logAdminAction(req.session.platformAdminId!, "update_slot_overrides", "organization", req.params.id, overridesBefore, req.body, null, req);
-      
+
       return res.json(result);
     } catch (error: any) {
       console.error("Update slot overrides error:", error);
@@ -746,7 +754,7 @@ export function registerPlatformAdminRoutes(app: Express) {
       if (!reason || reason.trim().length < 5) {
         return res.status(400).json({ message: "Delete reason is required (minimum 5 characters)" });
       }
-      
+
       await platformAdminStorage.deleteUser(req.params.id);
       await logAdminAction(req.session.platformAdminId!, "delete_user", "user", req.params.id, null, null, reason, req);
       return res.json({ message: "User deleted" });

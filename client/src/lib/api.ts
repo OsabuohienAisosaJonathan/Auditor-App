@@ -564,7 +564,7 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
     const response = await fetch(`${API_BASE}${url}`, {
       ...options,
       credentials: "include",
-      signal: controller.signal,
+      signal: controller.signal, // Default timeout is now 40s (in createTimeoutController)
       headers: {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
@@ -576,7 +576,7 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
     clear();
 
     const duration = Date.now() - startTime;
-    if (duration > 3000) {
+    if (duration > 5000) {
       console.warn(`[API] Slow request: ${url} took ${duration}ms (reqId: ${requestId})`);
     }
 

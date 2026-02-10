@@ -23,12 +23,23 @@ export function PlatformAdminAuthProvider({ children }: { children: ReactNode })
 
   const checkAuth = async () => {
     try {
-      const response = await fetch("/api/owner/auth/me", { credentials: "include" });
+      const token = localStorage.getItem("platform_admin_session_token");
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/owner/auth/me", {
+        credentials: "include",
+        headers
+      });
       if (response.ok) {
         const data = await response.json();
         setAdmin(data);
       } else {
         setAdmin(null);
+        // If 401, maybe token expired? ensure we don't clear it yet unless sure
+        if (response.status === 401) localStorage.removeItem("platform_admin_session_token");
       }
     } catch {
       setAdmin(null);
@@ -65,14 +76,24 @@ export function PlatformAdminAuthProvider({ children }: { children: ReactNode })
     }
 
     const data = await response.json();
+    if (data.sessionToken) {
+      console.log("[AdminAuth] Received session token");
+      localStorage.setItem("platform_admin_session_token", data.sessionToken);
+    }
     setAdmin(data);
   };
 
   const logout = async () => {
+    const token = localStorage.getItem("platform_admin_session_token");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     await fetch("/api/owner/auth/logout", {
       method: "POST",
       credentials: "include",
+      headers
     });
+    localStorage.removeItem("platform_admin_session_token");
     setAdmin(null);
   };
 

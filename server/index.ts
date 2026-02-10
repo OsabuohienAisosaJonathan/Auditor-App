@@ -65,8 +65,8 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-const SLOW_ROUTE_THRESHOLD_MS = 2000;
-const SERVER_REQUEST_TIMEOUT_MS = 15000; // 15 second server-side timeout
+const SLOW_ROUTE_THRESHOLD_MS = 5000;
+const SERVER_REQUEST_TIMEOUT_MS = 30000; // 30 second server-side timeout
 
 // Routes exempt from timeout (streaming, downloads, uploads)
 const TIMEOUT_EXEMPT_PATTERNS = [
