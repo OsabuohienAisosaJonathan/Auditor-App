@@ -350,7 +350,10 @@ export interface DashboardSummary {
   redFlags: { type: string; message: string; severity: string }[];
 }
 
-const API_BASE = "https://auditor-app.onrender.com";
+// ensure API_BASE ends with /api
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
+
 console.log("[API] Using Base URL:", API_BASE);
 const API_TIMEOUT_MS = 20000; // 20 second timeout (outer layer, gives server's 15s timeout time to respond)
 

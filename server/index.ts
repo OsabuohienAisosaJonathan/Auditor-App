@@ -3,7 +3,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { initializePool, checkDbHealth, getPoolStats, isCircuitBreakerOpen } from "./db";
+import { initializePool, checkDbHealth, getPoolStats, isCircuitBreakerOpen, db } from "./db";
+import { users } from "@shared/schema";
+import { count } from "drizzle-orm";
 
 // Force production mode when deployed on Replit
 // REPLIT_DEPLOYMENT is set to "1" when the app is published
@@ -40,7 +42,9 @@ app.use(
       "https://miauditops.ng",
       "https://www.miauditops.ng",
       "http://localhost:5000",
+      "http://127.0.0.1:5000",
       "http://localhost:5173",
+      "http://127.0.0.1:5173",
     ],
     credentials: true,
   })
@@ -226,6 +230,22 @@ httpServer.listen(
     await initializePool();
     dbInitialized = true;
     console.log("[STARTUP] Database pool initialized successfully");
+
+    // --- PROBE START ---
+    try {
+      console.log("🔍 [PROBE] Attempting to query 'users' table...");
+      const userList = await db.select({ username: users.username, email: users.email }).from(users).limit(3);
+      if (userList.length === 0) {
+        console.warn("⚠️ [PROBE] DB CONNECTED BUT NO USERS FOUND! You need to seed the database.");
+      } else {
+        console.log("✅ [PROBE] DB CONNECTED! Found users:", userList.map(u => u.username).join(", "));
+        console.log("👉 [PROBE] Try logging in with: " + userList[0].username);
+      }
+    } catch (e: any) {
+      console.error(`❌ [PROBE] DB CONNECTION FAILED: ${e.message}`);
+      console.error(e);
+    }
+    // --- PROBE END ---
   } catch (err: any) {
     dbInitError = err.message;
     console.error("[STARTUP] Failed to initialize database pool:", err.message);

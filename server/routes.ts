@@ -244,10 +244,10 @@ export async function registerRoutes(
         httpOnly: true,
         // FIXED: Always use secure cookies - Replit and Render use HTTPS
         // The previous dynamic approach caused race conditions where cookies weren't sent back
-        secure: process.env.NODE_ENV === "production" || useSecureCookies === true, // Force secure in production
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Allow cross-domain in production
+        secure: process.env.NODE_ENV === "production", // Only secure in production
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Lax for localhost
         maxAge: SESSION_IDLE_MAX_AGE,
-        domain: cookieDomain,
+        domain: undefined,
         path: "/",
       },
     })

@@ -169,7 +169,7 @@ export default function Login() {
 
       toast({
         title: "Welcome back!",
-        description: `Signed in as ${user.fullName}`,
+        description: `Signed in as ${user.fullName || user.username || 'User'}`,
       });
       setLocation("/dashboard");
     } catch (error: any) {

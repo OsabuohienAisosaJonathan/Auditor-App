@@ -30,20 +30,20 @@ export default function Clients() {
   const [deleteConfirmClient, setDeleteConfirmClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
-  
+
   const [createCategoryDialogOpen, setCreateCategoryDialogOpen] = useState(false);
   const [selectedClientForCategory, setSelectedClientForCategory] = useState<Client | null>(null);
-  
+
   const [createDeptDialogOpen, setCreateDeptDialogOpen] = useState(false);
   const [bulkDeptInput, setBulkDeptInput] = useState("");
   const [selectedClientForDept, setSelectedClientForDept] = useState<Client | null>(null);
   const [selectedCategoryForDept, setSelectedCategoryForDept] = useState<string | null>(null);
-  
+
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [deleteDeptConfirm, setDeleteDeptConfirm] = useState<Department | null>(null);
   const [suspendDeptDialog, setSuspendDeptDialog] = useState<Department | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
-  
+
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<Category | null>(null);
@@ -53,10 +53,10 @@ export default function Clients() {
   const queryClient = useQueryClient();
   const { isOnline } = useNetworkStatus();
 
-  const { 
-    data: clients, 
+  const {
+    data: clients,
     cachedData: cachedClients,
-    isLoading, 
+    isLoading,
     error,
     refetch,
     isUsingCache: clientsUsingCache,
@@ -66,6 +66,9 @@ export default function Clients() {
     clientsApi.getAll,
     { cacheEndpoint: "clients" }
   );
+
+  // Fallback to empty array if data is malformed
+  const safeClients = Array.isArray(clients) ? clients : [];
 
   const { data: expandedCategories = [] } = useQuery({
     queryKey: ["categories", expandedClientId],
@@ -166,7 +169,7 @@ export default function Clients() {
   });
 
   const createDeptMutation = useMutation({
-    mutationFn: (data: { clientId: string; name: string; categoryId?: string }) => 
+    mutationFn: (data: { clientId: string; name: string; categoryId?: string }) =>
       departmentsApi.create(data.clientId, { name: data.name, categoryId: data.categoryId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments", expandedClientId] });
@@ -180,7 +183,7 @@ export default function Clients() {
   });
 
   const bulkCreateDeptMutation = useMutation({
-    mutationFn: (data: { departments: string[]; clientId: string; categoryId?: string }) => 
+    mutationFn: (data: { departments: string[]; clientId: string; categoryId?: string }) =>
       departmentsApi.createBulk(data),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["departments", expandedClientId] });
@@ -223,7 +226,7 @@ export default function Clients() {
   });
 
   const suspendDeptMutation = useMutation({
-    mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) => 
+    mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) =>
       departmentsApi.update(id, { status, suspendReason: reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments", expandedClientId] });
@@ -236,7 +239,7 @@ export default function Clients() {
     },
   });
 
-  const filteredClients = clients?.filter(client => 
+  const filteredClients = safeClients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -250,7 +253,7 @@ export default function Clients() {
 
   const uncategorizedDepartments = expandedDepartments.filter(d => !d.categoryId);
 
-  if (isLoading && !clients) {
+  if (isLoading && !safeClients) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -264,7 +267,7 @@ export default function Clients() {
     );
   }
 
-  if (error && !clients && !cachedClients) {
+  if (error && !safeClients && !cachedClients) {
     return (
       <ErrorCard
         title="Failed to load clients"
@@ -374,7 +377,7 @@ export default function Clients() {
                               Edit Client
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => setDeleteConfirmClient(client)}
                               className="text-red-600 focus:text-red-600"
                             >
@@ -387,7 +390,7 @@ export default function Clients() {
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
-                
+
                 <CollapsibleContent>
                   <CardContent className="border-t pt-4">
                     <Tabs defaultValue="departments">
@@ -401,12 +404,12 @@ export default function Clients() {
                           Categories ({expandedCategories.length})
                         </TabsTrigger>
                       </TabsList>
-                      
+
                       <TabsContent value="departments" className="mt-4">
                         <div className="flex items-center justify-between mb-4">
                           <p className="text-sm text-muted-foreground">A Department outlet refers to a specific point of sale or service area within e.g (a hotel or restaurant group) that generates sales/revenue by providing food, beverages, or other specialized services.</p>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={() => {
                               // Check if client has at least one category before allowing department creation
                               if (!expandedCategories || expandedCategories.length === 0) {
@@ -422,7 +425,7 @@ export default function Clients() {
                             Add Department
                           </Button>
                         </div>
-                        
+
                         {expandedDepartments.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground">
                             No departments yet. Add departments to start auditing.
@@ -432,7 +435,7 @@ export default function Clients() {
                             {expandedCategories.map((category) => {
                               const catDepts = getDepartmentsByCategory(category.id);
                               if (catDepts.length === 0) return null;
-                              
+
                               return (
                                 <div key={category.id} className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -441,9 +444,9 @@ export default function Clients() {
                                   </div>
                                   <div className="grid gap-2 pl-6">
                                     {catDepts.map((dept) => (
-                                      <DepartmentRow 
-                                        key={dept.id} 
-                                        dept={dept} 
+                                      <DepartmentRow
+                                        key={dept.id}
+                                        dept={dept}
                                         onEdit={() => setEditingDepartment(dept)}
                                         onDelete={() => setDeleteDeptConfirm(dept)}
                                         onSuspend={() => setSuspendDeptDialog(dept)}
@@ -453,7 +456,7 @@ export default function Clients() {
                                 </div>
                               );
                             })}
-                            
+
                             {uncategorizedDepartments.length > 0 && (
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -462,9 +465,9 @@ export default function Clients() {
                                 </div>
                                 <div className="grid gap-2 pl-6">
                                   {uncategorizedDepartments.map((dept) => (
-                                    <DepartmentRow 
-                                      key={dept.id} 
-                                      dept={dept} 
+                                    <DepartmentRow
+                                      key={dept.id}
+                                      dept={dept}
                                       onEdit={() => setEditingDepartment(dept)}
                                       onDelete={() => setDeleteDeptConfirm(dept)}
                                       onSuspend={() => setSuspendDeptDialog(dept)}
@@ -476,12 +479,12 @@ export default function Clients() {
                           </div>
                         )}
                       </TabsContent>
-                      
+
                       <TabsContent value="categories" className="mt-4">
                         <div className="flex items-center justify-between mb-4">
                           <p className="text-sm text-muted-foreground">Categories serve as optional grouping labels for departments and outlets to facilitate the efficient separation and organization of items within the Inventory Management page. Create before proceeding to Inventory & Purchases</p>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => {
                               setSelectedClientForCategory(client);
@@ -492,7 +495,7 @@ export default function Clients() {
                             Add Category
                           </Button>
                         </div>
-                        
+
                         {expandedCategories.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground">
                             No categories yet. Categories help organize departments.
@@ -500,7 +503,7 @@ export default function Clients() {
                         ) : (
                           <div className="grid gap-2">
                             {expandedCategories.map((category) => (
-                              <div 
+                              <div
                                 key={category.id}
                                 className="flex items-center justify-between p-3 border rounded-lg"
                                 data-testid={`category-row-${category.id}`}
@@ -540,7 +543,7 @@ export default function Clients() {
                                       data-testid={`input-edit-category-${category.id}`}
                                     />
                                   ) : (
-                                    <span 
+                                    <span
                                       className="font-medium cursor-pointer hover:text-primary"
                                       onClick={() => {
                                         setEditingCategoryId(category.id);
@@ -605,14 +608,14 @@ export default function Clients() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Client Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  placeholder="Enter client name" 
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Enter client name"
                   maxLength={20}
                   onChange={(e) => e.target.value = e.target.value.toUpperCase()}
-                  required 
-                  data-testid="input-client-name" 
+                  required
+                  data-testid="input-client-name"
                 />
                 <p className="text-xs text-muted-foreground">
                   Client names will be saved as UPPERCASE. Maximum 20 characters.
@@ -638,21 +641,21 @@ export default function Clients() {
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
-            updateMutation.mutate({ 
-              id: editingClient!.id, 
-              data: { name: formData.get("name") as string } 
+            updateMutation.mutate({
+              id: editingClient!.id,
+              data: { name: formData.get("name") as string }
             });
           }}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Client Name</Label>
-                <Input 
-                  id="edit-name" 
-                  name="name" 
-                  defaultValue={editingClient?.name} 
+                <Input
+                  id="edit-name"
+                  name="name"
+                  defaultValue={editingClient?.name}
                   maxLength={20}
                   onChange={(e) => e.target.value = e.target.value.toUpperCase()}
-                  required 
+                  required
                 />
                 <p className="text-xs text-muted-foreground">
                   Client names will be saved as UPPERCASE. Maximum 20 characters.
@@ -682,8 +685,8 @@ export default function Clients() {
             <Button variant="outline" onClick={() => setDeleteConfirmClient(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => deleteConfirmClient && deleteMutation.mutate(deleteConfirmClient.id)}
               disabled={deleteMutation.isPending}
             >
@@ -692,7 +695,7 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Category Required Dialog - shown when trying to add department without categories */}
       <Dialog open={showCategoryRequiredDialog} onOpenChange={setShowCategoryRequiredDialog}>
         <DialogContent>
@@ -709,8 +712,8 @@ export default function Clients() {
             <Button type="button" variant="outline" onClick={() => setShowCategoryRequiredDialog(false)}>
               Cancel
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               onClick={() => {
                 setShowCategoryRequiredDialog(false);
                 setCreateCategoryDialogOpen(true);
@@ -721,7 +724,7 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <Dialog open={createCategoryDialogOpen} onOpenChange={setCreateCategoryDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -731,20 +734,20 @@ export default function Clients() {
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
-            createCategoryMutation.mutate({ 
+            createCategoryMutation.mutate({
               clientId: selectedClientForCategory!.id,
-              name: formData.get("name") as string 
+              name: formData.get("name") as string
             });
           }}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="category-name">Category Name</Label>
-                <Input 
-                  id="category-name" 
-                  name="name" 
-                  placeholder="e.g., F&B, FRONT DESK, ADMIN" 
+                <Input
+                  id="category-name"
+                  name="name"
+                  placeholder="e.g., F&B, FRONT DESK, ADMIN"
                   onChange={(e) => e.target.value = e.target.value.toUpperCase()}
-                  required 
+                  required
                 />
                 <p className="text-xs text-muted-foreground">
                   Category names will be saved as UPPERCASE.
@@ -772,7 +775,7 @@ export default function Clients() {
             e.preventDefault();
             const names = bulkDeptInput.split("\n").map(n => n.trim()).filter(n => n.length > 0);
             if (names.length === 0) return;
-            
+
             bulkCreateDeptMutation.mutate({
               departments: names,
               clientId: selectedClientForDept!.id,
@@ -798,7 +801,7 @@ export default function Clients() {
               )}
               <div className="space-y-2">
                 <Label htmlFor="bulk-depts">Department Names</Label>
-                <Textarea 
+                <Textarea
                   id="bulk-depts"
                   value={bulkDeptInput}
                   onChange={(e) => setBulkDeptInput(e.target.value.toUpperCase())}
@@ -834,20 +837,20 @@ export default function Clients() {
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
-            updateDeptMutation.mutate({ 
-              id: editingDepartment!.id, 
-              data: { name: formData.get("name") as string } 
+            updateDeptMutation.mutate({
+              id: editingDepartment!.id,
+              data: { name: formData.get("name") as string }
             });
           }}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-dept-name">Department Name</Label>
-                <Input 
-                  id="edit-dept-name" 
-                  name="name" 
-                  defaultValue={editingDepartment?.name} 
+                <Input
+                  id="edit-dept-name"
+                  name="name"
+                  defaultValue={editingDepartment?.name}
                   onChange={(e) => e.target.value = e.target.value.toUpperCase()}
-                  required 
+                  required
                 />
                 <p className="text-xs text-muted-foreground">
                   Names will be saved as UPPERCASE and end with "OUTLET" automatically.
@@ -877,8 +880,8 @@ export default function Clients() {
             <Button variant="outline" onClick={() => setDeleteDeptConfirm(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => deleteDeptConfirm && deleteDeptMutation.mutate(deleteDeptConfirm.id)}
               disabled={deleteDeptMutation.isPending}
             >
@@ -897,7 +900,7 @@ export default function Clients() {
               {suspendDeptDialog?.status === "active" ? "Suspend Department" : "Reactivate Department"}
             </DialogTitle>
             <DialogDescription>
-              {suspendDeptDialog?.status === "active" 
+              {suspendDeptDialog?.status === "active"
                 ? `Suspend "${suspendDeptDialog?.name}"? It will no longer appear in active selections.`
                 : `Reactivate "${suspendDeptDialog?.name}"? It will be available for use again.`
               }
@@ -906,7 +909,7 @@ export default function Clients() {
           {suspendDeptDialog?.status === "active" && (
             <div className="space-y-2 py-4">
               <Label htmlFor="suspend-reason">Reason for suspension</Label>
-              <Textarea 
+              <Textarea
                 id="suspend-reason"
                 value={suspendReason}
                 onChange={(e) => setSuspendReason(e.target.value)}
@@ -921,7 +924,7 @@ export default function Clients() {
             }}>
               Cancel
             </Button>
-            <Button 
+            <Button
               variant={suspendDeptDialog?.status === "active" ? "destructive" : "default"}
               onClick={() => {
                 if (!suspendDeptDialog) return;
@@ -933,8 +936,8 @@ export default function Clients() {
               }}
               disabled={suspendDeptMutation.isPending}
             >
-              {suspendDeptMutation.isPending 
-                ? "Updating..." 
+              {suspendDeptMutation.isPending
+                ? "Updating..."
                 : suspendDeptDialog?.status === "active" ? "Suspend" : "Reactivate"
               }
             </Button>
@@ -967,8 +970,8 @@ export default function Clients() {
               </ul>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="delete-ack" 
+              <Checkbox
+                id="delete-ack"
                 checked={deleteCategoryAck}
                 onCheckedChange={(checked) => setDeleteCategoryAck(checked === true)}
                 data-testid="checkbox-delete-category-ack"
@@ -985,8 +988,8 @@ export default function Clients() {
             }}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => deleteCategoryConfirm && deleteCategoryMutation.mutate(deleteCategoryConfirm.id)}
               disabled={!deleteCategoryAck || deleteCategoryMutation.isPending}
               data-testid="button-confirm-delete-category"
@@ -1000,15 +1003,15 @@ export default function Clients() {
   );
 }
 
-function DepartmentRow({ 
-  dept, 
-  onEdit, 
-  onDelete, 
-  onSuspend 
-}: { 
-  dept: Department; 
-  onEdit: () => void; 
-  onDelete: () => void; 
+function DepartmentRow({
+  dept,
+  onEdit,
+  onDelete,
+  onSuspend
+}: {
+  dept: Department;
+  onEdit: () => void;
+  onDelete: () => void;
   onSuspend: () => void;
 }) {
   return (

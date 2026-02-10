@@ -96,6 +96,10 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setEntitlements(data);
         setSubscriptionExpired({ isExpired: false });
+      } else if (response.status === 401) {
+        // Not authorized - user probably not logged in or session expired
+        // This is expected behavior for guests, so we don't log an error
+        setEntitlements(defaultEntitlements);
       } else if (response.status === 402) {
         const error = await response.json().catch(() => ({}));
         if (error.code === "SUBSCRIPTION_EXPIRED") {
@@ -129,7 +133,7 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
     if (isLoading || !entitlements) {
       return true;
     }
-    
+
     if (!entitlements[feature]) {
       showLockedModal(featureLabel, requiredPlan);
       return false;

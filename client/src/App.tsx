@@ -65,19 +65,19 @@ function AuthLoadingScreen() {
 function AuthErrorScreen({ error, onRetry, onGoToLogin }: { error: string; onRetry: () => void; onGoToLogin: () => void }) {
   const isServiceUnavailable = error === "service_unavailable";
   const isTimeout = error === "timeout";
-  
+
   const getTitle = () => {
     if (isServiceUnavailable) return "Service Temporarily Unavailable";
     if (isTimeout) return "Connection Timeout";
     return "Connection Problem";
   };
-  
+
   const getMessage = () => {
     if (isServiceUnavailable) return "The service is temporarily unavailable. This usually resolves within 30 seconds. Please try again.";
     if (isTimeout) return "The server took too long to respond. Please try again.";
     return "Unable to verify your session. Please check your connection.";
   };
-  
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="text-center space-y-4 p-6 max-w-md">
@@ -179,11 +179,11 @@ function ProtectedRoutes() {
 
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { user } = useAuth();
-  
+
   if (user?.role !== "super_admin") {
     return <AccessDeniedScreen />;
   }
-  
+
   return <Component />;
 }
 
@@ -237,50 +237,54 @@ function OwnerAdminRoutes() {
 function TenantRouter() {
   const [location] = useLocation();
   const { user, isLoading, authError, clearAuthError } = useAuth();
-  
+
   // Define public routes that don't need auth
   const publicRoutes = ["/", "/login", "/signup", "/about", "/contact", "/setup", "/forgot-password", "/reset-password", "/check-email", "/verify-email", "/bootstrap", "/change-password"];
   const isPublicRoute = publicRoutes.includes(location);
-  
+
   // For public routes, render without auth check
   if (isPublicRoute) {
     return <PublicRoutes />;
   }
-  
+
   // For protected routes, check auth first
   // Show loading while checking
   if (isLoading) {
     return <AuthLoadingScreen />;
   }
-  
+
   // Show error screen for network issues
   if (authError) {
     return (
-      <AuthErrorScreen 
+      <AuthErrorScreen
         error={authError}
         onRetry={() => { clearAuthError(); window.location.reload(); }}
         onGoToLogin={() => { clearAuthError(); window.location.href = "/login"; }}
       />
     );
   }
-  
-  // Not authenticated - show Login page ONLY (no layout, no dashboard)
+
+  // Not authenticated - redirect to Login page to clear URL
   if (!user) {
+    if (location !== "/login") {
+      window.location.href = "/login";
+      return <AuthLoadingScreen />;
+    }
     return <Login />;
   }
-  
+
   // Authenticated but must change password - force redirect to change password page
   if (user.mustChangePassword) {
     return <ChangePassword />;
   }
-  
+
   // Authenticated - render protected routes with layout
   return <ProtectedRoutes />;
 }
 
 function Router() {
   const [location] = useLocation();
-  
+
   // Owner (platform) admin routes are completely separate - check FIRST before any tenant logic
   if (location.startsWith("/owner")) {
     return (
@@ -289,7 +293,7 @@ function Router() {
       </PlatformAdminAuthProvider>
     );
   }
-  
+
   // All other routes go through tenant auth flow
   return <TenantRouter />;
 }
