@@ -262,10 +262,10 @@ export async function registerRoutes(
       rolling: true, // Enable sliding sessions - extends expiry on each request
       cookie: {
         httpOnly: true,
-        // FIXED: Always use secure cookies - Replit uses HTTPS in both dev and prod
+        // FIXED: Always use secure cookies - Replit and Render use HTTPS
         // The previous dynamic approach caused race conditions where cookies weren't sent back
-        secure: useSecureCookies,
-        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production" || useSecureCookies === true, // Force secure in production
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Allow cross-domain in production
         maxAge: SESSION_IDLE_MAX_AGE,
         domain: cookieDomain,
         path: "/",

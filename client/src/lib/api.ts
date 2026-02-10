@@ -350,7 +350,8 @@ export interface DashboardSummary {
   redFlags: { type: string; message: string; severity: string }[];
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://auditor-app.onrender.com";
+const API_BASE = "https://auditor-app.onrender.com";
+console.log("[API] Using Base URL:", API_BASE);
 const API_TIMEOUT_MS = 20000; // 20 second timeout (outer layer, gives server's 15s timeout time to respond)
 
 export class ApiError extends Error {
