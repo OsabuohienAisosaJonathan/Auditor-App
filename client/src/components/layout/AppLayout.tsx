@@ -39,6 +39,7 @@ const getRoleBadge = (role: string) => {
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  console.log("[AppLayout] Current User:", user); // DEBUG: Inspect user object
   const { theme, setTheme } = useTheme();
   const { state: sidebarState } = useSidebar();
   const { canGoBack, canGoForward, goBack, goForward, sidebarCollapsed, setSidebarCollapsed } = useLayout();
