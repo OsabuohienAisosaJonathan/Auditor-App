@@ -351,10 +351,18 @@ export interface DashboardSummary {
 }
 
 // ensure API_BASE ends with /api
+// ensure API_BASE ends with /api
 const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "";
-const API_BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
+
+// CRITICAL FIX: If we are in production (not localhost), IGNORE any localhost environment variable
+// This prevents the "Local Network Access" error when a stale build or env var points to localhost:5000
+const isLocalWindow = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const effectiveBase = (!isLocalWindow && RAW_BASE.includes("localhost")) ? "" : RAW_BASE;
+
+const API_BASE = effectiveBase.endsWith("/api") ? effectiveBase : `${effectiveBase}/api`;
 
 console.log("[API] Using Base URL:", API_BASE);
+console.error("[API DEBUG] RAW_BASE:", RAW_BASE, "EffectiveBase:", effectiveBase, "IsLocalWindow:", isLocalWindow); // Keep debug log for now
 const API_TIMEOUT_MS = 20000; // 20 second timeout (outer layer, gives server's 15s timeout time to respond)
 
 export class ApiError extends Error {
