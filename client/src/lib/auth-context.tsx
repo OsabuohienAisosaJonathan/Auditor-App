@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // CRITICAL FIX: Wait a brief moment for session to fully persist to database
       // This prevents the race condition where /auth/me is called before session is saved
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Verify the session is actually working by calling /auth/me
       // This ensures the cookie is properly set and session is persisted
@@ -144,13 +144,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logAuthEvent("POST_LOGIN_VERIFY_OK", { message: `Session verified for user ${verifiedUser.id}` });
         setUser(verifiedUser);
       } catch (verifyErr: any) {
-        // If verification fails, log it but still use the login response data
-        // This is a fallback - the login response has the user data
-        logAuthEvent("POST_LOGIN_VERIFY_FAIL", {
-          message: `${verifyErr.message} - Using login response data`,
-          status: verifyErr.status,
-        });
-        setUser(userData);
+        // Retry once after another 500ms if first verification fails
+        console.warn("[Auth] First verification failed, retrying in 500ms...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          const retryUser = await authApi.me();
+          logAuthEvent("POST_LOGIN_VERIFY_RETRY_OK", { message: `Session verified on retry for user ${retryUser.id}` });
+          setUser(retryUser);
+        } catch (retryErr: any) {
+          // If verification fails again, log it but still use the login response data
+          // This is a fallback - the login response has the user data
+          logAuthEvent("POST_LOGIN_VERIFY_FAIL", {
+            message: `${retryErr.message} - Using login response data after retry`,
+            status: retryErr.status,
+          });
+          setUser(userData);
+        }
       }
 
       setAuthError(null);

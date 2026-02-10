@@ -1,13 +1,13 @@
 // Auth Debug Logger - Records auth events for debugging timeouts and race conditions
 // Enable via URL param ?debugAuth=1 or by setting window.__DEBUG_AUTH = true
 
-export type AuthEventType = 
-  | "LOGIN_START" 
-  | "LOGIN_OK" 
+export type AuthEventType =
+  | "LOGIN_START"
+  | "LOGIN_OK"
   | "LOGIN_FAIL"
   | "LOGOUT"
-  | "REFRESH_START" 
-  | "REFRESH_OK" 
+  | "REFRESH_START"
+  | "REFRESH_OK"
   | "REFRESH_FAIL"
   | "VERIFY_START"
   | "VERIFY_OK"
@@ -15,6 +15,7 @@ export type AuthEventType =
   | "POST_LOGIN_VERIFY"
   | "POST_LOGIN_VERIFY_OK"
   | "POST_LOGIN_VERIFY_FAIL"
+  | "POST_LOGIN_VERIFY_RETRY_OK"
   | "REDIRECT_LOGIN"
   | "SESSION_EXPIRED"
   | "SESSION_EXPIRED_CALLBACK"
@@ -39,17 +40,17 @@ const events: AuthEvent[] = [];
 
 function isDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
-  
+
   // Check URL param
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("debugAuth") === "1") return true;
-  
+
   // Check global flag
   if ((window as any).__DEBUG_AUTH === true) return true;
-  
+
   // Check env (for dev builds)
   if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_AUTH === "true") return true;
-  
+
   return false;
 }
 
@@ -68,14 +69,14 @@ export function logAuthEvent(
     eventType,
     ...details,
   };
-  
+
   events.push(event);
-  
+
   // Keep only last MAX_EVENTS
   if (events.length > MAX_EVENTS) {
     events.shift();
   }
-  
+
   // Console log if debug enabled
   if (isDebugEnabled()) {
     const logParts = [
@@ -86,7 +87,7 @@ export function logAuthEvent(
       details?.duration && `duration=${details.duration}ms`,
       details?.message && `msg="${details.message}"`,
     ].filter(Boolean);
-    
+
     console.log(logParts.join(" | "));
   }
 }
@@ -100,9 +101,9 @@ export function clearAuthEvents(): void {
 }
 
 export function getRecentFailures(): AuthEvent[] {
-  return events.filter(e => 
-    e.eventType.includes("FAIL") || 
-    e.eventType.includes("TIMEOUT") || 
+  return events.filter(e =>
+    e.eventType.includes("FAIL") ||
+    e.eventType.includes("TIMEOUT") ||
     e.eventType.includes("401") ||
     e.eventType.includes("ERROR")
   );
