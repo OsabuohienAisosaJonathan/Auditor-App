@@ -188,42 +188,21 @@ export async function registerRoutes(
 
   let sessionStore: session.Store;
 
+  // FORCE MEMORY STORE for debugging 502 errors
+  // This rules out MySQL session store connection issues
+  sessionStore = new MemoryStoreFactory({
+    checkPeriod: 86400000, // Prune expired entries every 24h
+  });
+
+  console.log("[Session Store] FORCED: Using pure memory store (production debugging)");
+
+  /* 
   if (isProduction && process.env.DATABASE_URL) {
     // Production: MySQL store
     console.log("[Session Store] Configuring MySQL session store...");
-
-    // Create a separate connection pool for sessions to avoid contention
-    const sessionPool = mysql.createPool({
-      uri: process.env.DATABASE_URL,
-      waitForConnections: true,
-      connectionLimit: 4,
-      queueLimit: 0,
-      keepAliveInitialDelay: 10000,
-      enableKeepAlive: true,
-    });
-
-    const mysqlStore = new MySQLSessionStore({
-      checkExpirationInterval: 900000, // How frequently expired sessions will be cleared; milliseconds: 15min
-      expiration: SESSION_IDLE_MAX_AGE, // The maximum age of a valid session; milliseconds: 2h
-      createDatabaseTable: true, // Whether or not to create the sessions database table, if one does not already exist
-      schema: {
-        tableName: 'sessions',
-        columnNames: {
-          session_id: 'session_id',
-          expires: 'expires',
-          data: 'data'
-        }
-      }
-    }, sessionPool as any); // cast as any because types might be slightly mismatched
-
-    // Wrap with caching layer if needed, or just use directly. 
-    // connect-pg-simple was wrapped, but express-mysql-session is usually fast enough.
-    // However, keeping CachedSessionStore wrapper might be good if compatible.
-    // CachedSessionStore expects a 'get', 'set', 'destroy', 'touch' interface.
-    // Let's stick to direct MySQLStore for simplicity first to reduce complexity.
-    sessionStore = mysqlStore;
-
-    console.log("[Session Store] Using MySQL store (production)");
+    
+    // ... (MySQL store code commented out for stability test) ...
+    // ...
   } else {
     // Development: Pure memory store - no DB dependency for sessions
     // Sessions won't persist across server restarts, but that's fine for dev
@@ -233,6 +212,7 @@ export async function registerRoutes(
 
     console.log("[Session Store] Using pure memory store (development)");
   }
+  */
 
   // Background session pruning for production PostgreSQL - runs every 30 minutes
   if (isProduction) {
