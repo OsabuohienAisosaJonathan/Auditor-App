@@ -234,14 +234,17 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production",
       resave: false, // FALSE is better for MySQLStore
       saveUninitialized: false,
-      proxy: true, // Always behind proxy on Replit/Render
+      proxy: true, // Always behind proxy on Replit/Render/Go54
       rolling: true, // Enable sliding sessions
       cookie: {
         httpOnly: true,
         secure: isProduction, // CRITICAL: HTTPS for production
-        sameSite: isProduction ? "none" : "lax", // CRITICAL: none for cross-origin (Go54 -> Render)
+        // Go54/Render deployment is often same-domain or subdomain. 
+        // "Lax" is safer and sufficient for most cases. 
+        // "None" is only needed for cross-site (e.g. localhost frontend -> render backend)
+        sameSite: (process.env.SESSION_SAME_SITE as "lax" | "strict" | "none") || (isProduction ? "lax" : "lax"),
         maxAge: SESSION_IDLE_MAX_AGE,
-        domain: undefined,
+        domain: cookieDomain,
         path: "/",
       },
     })
