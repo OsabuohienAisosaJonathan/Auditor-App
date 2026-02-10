@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { authApi, type User, resetRedirectState, setSessionExpiredCallback } from "./api";
+import { authApi, type User, resetRedirectState, setSessionExpiredCallback, setAuthToken, clearAuthToken } from "./api";
 import { logAuthEvent } from "./auth-debug";
 
 interface AuthContextType {
@@ -20,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
-  
+
   // Register callback for session expiration from API layer
   // This allows 401 errors to update auth state without hard redirects
   useEffect(() => {
@@ -29,9 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setAuthError(null); // Don't show error - just show login page
     };
-    
+
     setSessionExpiredCallback(handleSessionExpired);
-    
+
     return () => {
       setSessionExpiredCallback(null);
     };
@@ -48,11 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError(null);
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      logAuthEvent("VERIFY_FAIL", { 
-        endpoint: "/auth/me", 
-        duration, 
+      logAuthEvent("VERIFY_FAIL", {
+        endpoint: "/auth/me",
+        duration,
         status: err.status || "ERROR",
-        message: err.message 
+        message: err.message
       });
       // CRITICAL: If verify fails, user is NOT authenticated
       setUser(null);
@@ -65,15 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const verifySession = async () => {
       logAuthEvent("VERIFY_START", { endpoint: "/auth/me", message: "Initial session check" });
       const startTime = Date.now();
-      
+
       try {
         const userData = await authApi.me();
         const duration = Date.now() - startTime;
-        
+
         if (mounted) {
           logAuthEvent("VERIFY_OK", { endpoint: "/auth/me", duration, status: 200 });
           setUser(userData);
@@ -81,15 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: any) {
         const duration = Date.now() - startTime;
-        
+
         if (mounted) {
-          logAuthEvent("VERIFY_FAIL", { 
-            endpoint: "/auth/me", 
-            duration, 
+          logAuthEvent("VERIFY_FAIL", {
+            endpoint: "/auth/me",
+            duration,
             status: err.status || "ERROR",
-            message: err.message 
+            message: err.message
           });
-          
+
           // Handle 503 (Service Unavailable) - don't clear user, show retry banner
           if (err.status === 503) {
             setAuthError("service_unavailable");
@@ -109,9 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-    
+
     verifySession();
-    
+
     return () => {
       mounted = false;
     };
@@ -120,16 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, password: string): Promise<User> => {
     logAuthEvent("LOGIN_START", { endpoint: "/auth/login", method: "POST" });
     const startTime = Date.now();
-    
+
     try {
       const userData = await authApi.login(username, password);
+
+      // CRITICAL: Save session token if provided (header-based auth fallback)
+      if (userData.sessionToken) {
+        setAuthToken(userData.sessionToken);
+      }
+
       const duration = Date.now() - startTime;
       logAuthEvent("LOGIN_OK", { endpoint: "/auth/login", duration, status: 200 });
-      
+
       // CRITICAL FIX: Wait a brief moment for session to fully persist to database
       // This prevents the race condition where /auth/me is called before session is saved
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Verify the session is actually working by calling /auth/me
       // This ensures the cookie is properly set and session is persisted
       try {
@@ -140,23 +145,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (verifyErr: any) {
         // If verification fails, log it but still use the login response data
         // This is a fallback - the login response has the user data
-        logAuthEvent("POST_LOGIN_VERIFY_FAIL", { 
+        logAuthEvent("POST_LOGIN_VERIFY_FAIL", {
           message: `${verifyErr.message} - Using login response data`,
           status: verifyErr.status,
         });
         setUser(userData);
       }
-      
+
       setAuthError(null);
       resetRedirectState(); // Clear any redirect flags on successful login
       return userData;
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      logAuthEvent("LOGIN_FAIL", { 
-        endpoint: "/auth/login", 
-        duration, 
+      logAuthEvent("LOGIN_FAIL", {
+        endpoint: "/auth/login",
+        duration,
         status: err.status || "ERROR",
-        message: err.message 
+        message: err.message
       });
       throw err;
     }
@@ -164,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     logAuthEvent("LOGOUT", { message: "User initiated logout" });
+    clearAuthToken(); // Clear token immediately
     try {
       await authApi.logout();
     } catch {

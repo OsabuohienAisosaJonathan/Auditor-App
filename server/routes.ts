@@ -213,6 +213,21 @@ export async function registerRoutes(
   // Background session pruning for production PostgreSQL - runs every 30 minutes
 
 
+  // CRITICAL: Shim for header-based auth (when cross-origin cookies are blocked)
+  // Maps "Authorization: Bearer <token>" to "cookie: connect.sid=<token>"
+  app.use((req, res, next) => {
+    if (!req.headers.cookie && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        // Inject the cookie header so express-session finds it
+        // Note: The token from login response is already the signed value
+        req.headers.cookie = `connect.sid=${token}`;
+      }
+    }
+    next();
+  });
+
   app.use(
     session({
       store: sessionStore,
@@ -864,6 +879,11 @@ export async function registerRoutes(
         ipAddress: req.ip || "Unknown",
       });
 
+      // Extract the signed session ID from the Set-Cookie header for header-based auth
+      // This shim allows clients to send "Authorization: Bearer <token>" when cookies are blocked
+      const sessionTokenMatch = setCookieStr.match(/connect\.sid=([^;]+)/);
+      const sessionToken = sessionTokenMatch ? sessionTokenMatch[1] : null;
+
       // Send response ONLY after session is fully persisted
       res.json({
         id: user.id,
@@ -873,6 +893,7 @@ export async function registerRoutes(
         role: user.role,
         mustChangePassword: user.mustChangePassword,
         accessScope: user.accessScope,
+        sessionToken: sessionToken // SIGNED token for header-based auth
       });
     } catch (error: any) {
       const totalTime = Date.now() - loginStart;

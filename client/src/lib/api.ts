@@ -407,6 +407,20 @@ function createTimeoutController(timeoutMs: number = API_TIMEOUT_MS): {
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/about", "/contact", "/setup", "/forgot-password", "/reset-password", "/check-email", "/verify-email"];
 let isRedirecting = false;
 
+const AUTH_TOKEN_KEY = "audit_ops_auth_token";
+
+export function setAuthToken(token: string) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
 // Will be set by queryClient.ts to allow clearing queries on 401
 let queryClientRef: { clear: () => void } | null = null;
 
@@ -445,10 +459,12 @@ export async function attemptSilentRefresh(): Promise<boolean> {
 
       const response = await fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // Send cookies if available
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
+          // Also try to send token if we have it (for header-based auth)
+          ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
         },
       });
 
@@ -496,6 +512,7 @@ export function setSessionExpiredCallback(callback: (() => void) | null) {
 }
 
 export function handle401Redirect() {
+  clearAuthToken(); // Clear token on 401
   // Use a debounce approach instead of permanent flag
   // Allow re-triggering after a short delay to handle legitimate session expiry
   if (isRedirecting) return;
@@ -550,6 +567,7 @@ async function fetchApi<T>(url: string, options?: RequestInit, isRetry = false):
       headers: {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
+        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
         ...options?.headers,
       },
     });
