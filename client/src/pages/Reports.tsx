@@ -80,6 +80,39 @@ const QUICK_TEMPLATES = {
   },
 };
 
+const REPORT_CONFIGS: Record<string, { label: string; dateRange: string; sections: string[] }> = {
+  "daily": {
+    label: "Daily Audit Report",
+    dateRange: "yesterday",
+    sections: ["executive-summary", "metrics-dashboard", "sales-revenue", "sales-by-department", "payment-methods", "payment-matrix", "declared-vs-system", "department-comparison", "stock-report", "stock-movements", "exception-log"]
+  },
+  "weekly": {
+    label: "Weekly Audit Report",
+    dateRange: "week",
+    sections: ["executive-summary", "metrics-dashboard", "daily-breakdown", "sales-by-department", "payment-methods", "payment-matrix", "declared-vs-system", "department-comparison", "stock-report", "stock-movements", "exception-log"]
+  },
+  "monthly": {
+    label: "Monthly Audit Report",
+    dateRange: "month",
+    sections: ["executive-summary", "metrics-dashboard", "sales-revenue", "daily-breakdown", "sales-by-department", "department-comparison", "stock-report", "stock-movements", "exception-log", "audit-evidence"]
+  },
+  "department-comparison": {
+    label: "Department Comparison Report",
+    dateRange: "yesterday",
+    sections: ["department-comparison", "department-comparison-full", "sales-by-department", "payment-matrix"]
+  },
+  "stock-variance": {
+    label: "Stock Variance Report",
+    dateRange: "yesterday",
+    sections: ["stock-report", "stock-movements", "srd-main-store", "grn-register"]
+  },
+  "exceptions": {
+    label: "Exceptions Report",
+    dateRange: "week",
+    sections: ["exception-log", "metrics-dashboard"]
+  }
+};
+
 export default function Reports() {
   const [reportType, setReportType] = useState("daily");
   const [dateRange, setDateRange] = useState("today");
@@ -385,6 +418,16 @@ export default function Reports() {
         ? prev.filter(s => s !== sectionId)
         : [...prev, sectionId]
     );
+  };
+
+  const handleReportTypeChange = (value: string) => {
+    setReportType(value);
+    const config = REPORT_CONFIGS[value];
+    if (config) {
+      setDateRange(config.dateRange);
+      setSelectedSections(config.sections);
+      toast.success(`Switched to ${config.label} view`);
+    }
   };
 
   const applyTemplate = (templateKey: string) => {
@@ -1095,7 +1138,7 @@ export default function Reports() {
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Report Type</Label>
-                  <Select value={reportType} onValueChange={setReportType}>
+                  <Select value={reportType} onValueChange={handleReportTypeChange}>
                     <SelectTrigger data-testid="select-report-type">
                       <SelectValue />
                     </SelectTrigger>

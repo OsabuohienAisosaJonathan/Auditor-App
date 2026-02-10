@@ -351,7 +351,7 @@ export interface DashboardSummary {
 }
 
 // ensure API_BASE ends with /api
-const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const API_BASE = RAW_BASE.endsWith("/api") ? RAW_BASE : `${RAW_BASE}/api`;
 
 console.log("[API] Using Base URL:", API_BASE);
