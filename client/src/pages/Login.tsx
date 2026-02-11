@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation, Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { setAuthToken } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Mail, Play, Eye, EyeOff, Activity, Lock } from "lucide-react";
 import { logAuthEvent } from "@/lib/auth-debug";
@@ -83,6 +84,15 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
+        // CRITICAL: Save session token if provided (header-based auth fallback)
+        if (data.sessionToken) {
+          console.log("[DemoLogin] Received session token:", data.sessionToken.substring(0, 8) + "...");
+          setAuthToken(data.sessionToken);
+        }
+
+        // Wait a moment for session to stick before refreshing
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         await refreshUser();
         toast({
           title: "Demo Mode",
