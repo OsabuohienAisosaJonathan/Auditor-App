@@ -943,9 +943,12 @@ export async function registerRoutes(
 
   // Demo login for development preview - creates or reuses a demo account
   app.post("/api/auth/demo-login", async (req, res) => {
+    console.log("[DEMO-LOGIN] Starting demo login request");
+
     try {
       // Only allow demo login in development mode for security
       if (process.env.NODE_ENV === "production") {
+        console.warn("[DEMO-LOGIN] blocked in production");
         return res.status(403).json({ error: "Demo login is not available in production" });
       }
 
@@ -956,8 +959,11 @@ export async function registerRoutes(
 
       // Check if demo user exists
       let demoUser = await storage.getUserByEmail(DEMO_EMAIL);
+      console.log(`[DEMO-LOGIN] Existing user found: ${!!demoUser}`);
 
       if (!demoUser) {
+        console.log("[DEMO-LOGIN] Creating new demo user and organization...");
+
         // Use bootstrapOrganizationWithOwner for atomic creation of org + user + subscription
         const hashedPassword = await hash(DEMO_PASSWORD, 12);
         const { organization, user } = await storage.bootstrapOrganizationWithOwner(
@@ -981,6 +987,7 @@ export async function registerRoutes(
         );
 
         demoUser = user;
+        console.log(`[DEMO-LOGIN] Created user: ${demoUser.id} (${demoUser.username})`);
 
         // Create a demo client for the demo organization
         await storage.createClient({
@@ -988,7 +995,9 @@ export async function registerRoutes(
           organizationId: organization.id,
           status: "active",
         });
+        console.log("[DEMO-LOGIN] Created demo client");
       } else if (!demoUser.organizationId) {
+        console.log(`[DEMO-LOGIN] Demo user ${demoUser.id} exists but no organization. Creating new org and linking.`);
         // Remediation: Demo user exists but has no organization - create new org and link user
         const demoOrg = await storage.createOrganization({
           name: "Demo Organization",
@@ -996,6 +1005,7 @@ export async function registerRoutes(
           email: DEMO_EMAIL,
           currencyCode: "NGN",
         });
+        console.log(`[DEMO-LOGIN] Created organization ${demoOrg.id}`);
 
         // Create subscription for the organization
         await storage.createSubscription({
@@ -1006,6 +1016,7 @@ export async function registerRoutes(
           status: "trial",
           startDate: new Date(),
         });
+        console.log(`[DEMO-LOGIN] Created subscription for org ${demoOrg.id}`);
 
         // Link user to organization
         await storage.updateUser(demoUser.id, {
@@ -1052,6 +1063,8 @@ export async function registerRoutes(
       req.session.role = demoUser.role;
       (req.session as any).createdAt = Date.now();
 
+      console.log(`[DEMO-LOGIN] Saving session for user ${demoUser.id}`);
+
       // Save session and WAIT for PostgreSQL write to complete
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
@@ -1063,6 +1076,14 @@ export async function registerRoutes(
           }
         });
       });
+
+      console.log("[DEMO-LOGIN] Session saved successfully");
+
+      // Manually sign the session ID (Critical Fix)
+      const sessionSecret = process.env.SESSION_SECRET || "audit-ops-secret-key-change-in-production";
+      const signedSessionId = "s:" + signature.sign(req.sessionID, sessionSecret);
+
+      console.log(`[DEMO-LOGIN] Generated manual session token: ${signedSessionId.substring(0, 15)}...`);
 
       await storage.updateUser(demoUser.id, {
         lastLoginAt: new Date(),
@@ -1081,10 +1102,12 @@ export async function registerRoutes(
         username: demoUser.username,
         email: demoUser.email,
         fullName: demoUser.fullName,
+        organizationId: demoUser.organizationId,
         role: demoUser.role,
         mustChangePassword: false,
         accessScope: demoUser.accessScope,
         isDemo: true,
+        sessionToken: signedSessionId
       });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

@@ -74,43 +74,55 @@ export default function Login() {
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
+    console.log("[DemoLogin] Starting demo login flow...");
     try {
+      console.log("[DemoLogin] Sending POST request to /api/auth/demo-login");
       const response = await fetch("/api/auth/demo-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
 
+      console.log(`[DemoLogin] Response status: ${response.status} ${response.statusText}`);
       const data = await response.json();
+      console.log("[DemoLogin] Response data:", data);
 
       if (response.ok) {
         // CRITICAL: Save session token if provided (header-based auth fallback)
         if (data.sessionToken) {
           console.log("[DemoLogin] Received session token:", data.sessionToken.substring(0, 8) + "...");
           setAuthToken(data.sessionToken);
+          console.log("[DemoLogin] Token saved to local storage");
+        } else {
+          console.warn("[DemoLogin] No session token received in successful response!");
         }
 
         // Wait a moment for session to stick before refreshing
         await new Promise(resolve => setTimeout(resolve, 500));
 
+        console.log("[DemoLogin] Refreshing user...");
         await refreshUser();
+        console.log("[DemoLogin] User refreshed");
+
         toast({
           title: "Demo Mode",
           description: "Logged in as demo user for preview testing",
         });
         setLocation("/dashboard");
       } else {
+        console.error("[DemoLogin] Failed:", data.error);
         toast({
           variant: "destructive",
           title: "Demo Login Failed",
           description: data.error || "Unable to access demo mode",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("[DemoLogin] Exception:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: `Something went wrong: ${error.message || "Unknown error"}`,
       });
     } finally {
       setIsDemoLoading(false);
